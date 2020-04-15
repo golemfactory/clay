@@ -1,20 +1,21 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Type, Optional
+from typing import Dict, List, Type, Optional, TYPE_CHECKING
 
 from dataclasses import dataclass
 from peewee import PeeweeException
-from twisted.internet.defer import Deferred, inlineCallbacks, DeferredLock
+from twisted.internet.defer import inlineCallbacks, DeferredLock
 
-from golem.envs import (
-    BenchmarkResult,
-    EnvId,
-    Environment,
-    EnvMetadata,
-)
+from golem.envs import BenchmarkResult
 from golem.envs.wrappers import auto_setup, dump_logs
 from golem.model import Performance, EnvConfiguration
-from golem.task.task_api import TaskApiPayloadBuilder
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from twisted.internet.defer import Deferred
+    from golem.envs import EnvId, Environment, EnvMetadata
+    from golem.task.task_api import TaskApiPayloadBuilder
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,20 +26,20 @@ class EnvironmentManager:
 
     @dataclass
     class EnvEntry:
-        instance: Environment
-        metadata: EnvMetadata
-        payload_builder: Type[TaskApiPayloadBuilder]
+        instance: 'Environment'
+        metadata: 'EnvMetadata'
+        payload_builder: 'Type[TaskApiPayloadBuilder]'
 
     def __init__(self, runtime_logs_dir: Path) -> None:
         self._runtime_logs_dir = runtime_logs_dir
-        self._envs: Dict[EnvId, EnvironmentManager.EnvEntry] = {}
+        self._envs: 'Dict[EnvId, EnvironmentManager.EnvEntry]' = {}
         self._state = EnvStates()
         self._running_benchmark: bool = False
         self._lock = DeferredLock()
-        self._active_env: Optional[Environment] = None
+        self._active_env: 'Optional[Environment]' = None
 
     @inlineCallbacks
-    def _start_usage(self, env: Environment) -> Deferred:
+    def _start_usage(self, env: 'Environment') -> 'Deferred':
         yield self._lock.acquire()
 
         if self._active_env is env:
@@ -60,16 +61,16 @@ class EnvironmentManager:
             raise
 
     @inlineCallbacks
-    def _end_usage(self, env: Environment) -> Deferred:
+    def _end_usage(self, env: 'Environment') -> 'Deferred':
         if self._active_env is not env:
             raise ValueError('end_usage called for wrong environment')
         yield self._lock.release()
 
     def register_env(
             self,
-            env: Environment,
-            metadata: EnvMetadata,
-            payload_builder: Type[TaskApiPayloadBuilder],
+            env: 'Environment',
+            metadata: 'EnvMetadata',
+            payload_builder: 'Type[TaskApiPayloadBuilder]',
     ) -> None:
         """ Register an Environment (i.e. make it visible to manager). """
         if metadata.id in self._envs:
@@ -98,47 +99,47 @@ class EnvironmentManager:
         if metadata.id not in self._state:
             self._state[metadata.id] = False
 
-    def state(self) -> Dict[EnvId, bool]:
+    def state(self) -> 'Dict[EnvId, bool]':
         """ Get the state (enabled or not) for all registered Environments. """
         return self._state.copy()
 
-    def set_state(self, state: Dict[EnvId, bool]) -> None:
+    def set_state(self, state: 'Dict[EnvId, bool]') -> None:
         """ Set the state (enabled or not) for all registered Environments. """
         for env_id, enabled in state.items():
             self.set_enabled(env_id, enabled)
 
-    def enabled(self, env_id: EnvId) -> bool:
+    def enabled(self, env_id: 'EnvId') -> bool:
         """ Get the state (enabled or not) for an Environment.
             Also returns false when the environment is not registered"""
         if env_id not in self._envs or env_id not in self._state:
             return False
         return self._state[env_id]
 
-    def set_enabled(self, env_id: EnvId, enabled: bool) -> None:
+    def set_enabled(self, env_id: 'EnvId', enabled: bool) -> None:
         """ Set the state (enabled or not) for an Environment. This does *not*
             include actually activating or deactivating the Environment. """
         if env_id in self._state:
             self._state[env_id] = enabled
 
-    def environments(self) -> List[EnvId]:
+    def environments(self) -> 'List[EnvId]':
         """ Get all registered Environment IDs. """
         return [entry.metadata.id for entry in self._envs.values()]
 
-    def environment(self, env_id: EnvId) -> Environment:
+    def environment(self, env_id: 'EnvId') -> 'Environment':
         """ Get Environment with the given ID. Assumes such Environment is
             registered. """
         return self._envs[env_id].instance
 
-    def metadata(self, env_id: EnvId) -> EnvMetadata:
+    def metadata(self, env_id: 'EnvId') -> 'EnvMetadata':
         """ Get metadata for environment with the given ID. """
         return self._envs[env_id].metadata
 
-    def payload_builder(self, env_id: EnvId) -> Type[TaskApiPayloadBuilder]:
+    def payload_builder(self, env_id: 'EnvId') -> Type['TaskApiPayloadBuilder']:
         """ Get payload builder class for environment with the given ID. """
         return self._envs[env_id].payload_builder
 
     @inlineCallbacks
-    def get_benchmark_result(self, env_id) -> Deferred:
+    def get_benchmark_result(self, env_id) -> 'Deferred':
         """ Gets the performance for the given environment
             Checks the database first, if not found it starts a benchmark
             :return Deferred resulting in a BenchmarkResult object or None
@@ -184,7 +185,7 @@ class EnvironmentManager:
         return result
 
     @staticmethod
-    def get_cached_benchmark_result(env_id: EnvId):
+    def get_cached_benchmark_result(env_id: 'EnvId'):
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             return BenchmarkResult.from_performance(perf)
@@ -192,7 +193,7 @@ class EnvironmentManager:
             return None
 
     @staticmethod
-    def remove_cached_performance(env_id: EnvId) -> None:
+    def remove_cached_performance(env_id: 'EnvId') -> None:
         try:
             query = Performance.delete().where(
                 Performance.environment_id == env_id)
@@ -204,7 +205,7 @@ class EnvironmentManager:
 class EnvStates:
 
     @staticmethod
-    def copy() -> Dict[EnvId, bool]:
+    def copy() -> Dict['EnvId', bool]:
         configs = EnvConfiguration.select().execute()
         return {config.env_id: config.enabled for config in configs}
 
