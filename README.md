@@ -9,7 +9,7 @@ Golem is a decentralized marketplace for computing power. It enables CPUs and GP
 
 One core component to Golem’s built-in feature set is an [**Ethereum-based transaction system**](https://docs.golem.network/#/About/Payments), which enables direct payments between requestors, providers, and software developers.
 
-Learn more with our [Wiki](https://docs.golem.network/#/)
+Learn more with our [Docs](https://docs.golem.network/#/)
 
 ## Installing and testing
 
