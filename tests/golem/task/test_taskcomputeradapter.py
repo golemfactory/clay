@@ -234,10 +234,20 @@ class TestCheckTimeout(TaskComputerAdapterTestBase):
 class TestGetProgress(TaskComputerAdapterTestBase):
 
     def test_no_assigned_task(self):
+        self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = False
         self.assertIsNone(self.adapter.get_progress())
 
+    def test_assigned_new_task(self):
+        self.new_computer.has_assigned_task.return_value = True
+        self.old_computer.has_assigned_task.return_value = False
+        self.assertIs(
+            self.adapter.get_progress(),
+            self.new_computer.get_progress()
+        )
+
     def test_assigned_old_task(self):
+        self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = True
         self.assertIs(
             self.adapter.get_progress(),
