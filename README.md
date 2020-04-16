@@ -13,15 +13,15 @@ Learn more with our [Wiki](https://docs.golem.network/#/)
 
 ## Installing and testing
 
-Follow [installation guidelines](https://docs.golem.network/#/Products/Brass-Beta/Installation)
+Follow [installation guidelines](https://docs.golem.network/#/Products/Clay-Beta/Installation)
 
 ## Usage & troubleshoothing
 
-The most common problems are described in [Issues & Troubleshooting](https://docs.golem.network/#/Products/Brass-Beta/Issues-&-Troubleshooting) section.
+The most common problems are described in [Issues & Troubleshooting](https://docs.golem.network/#/Products/Clay-Beta/Issues-&-Troubleshooting) section.
 
 ## Contact  
 
 Help us develop the application by submitting issues and bugs. See instruction
-[here](https://docs.golem.network/#/Products/Brass-Beta/Testing).
+[here](https://docs.golem.network/#/Products/Clay-Beta/Testing).
 
 You can also send us an email to `contact@golem.network` or talk to us on [chat.golem.network](https://chat.golem.network).
