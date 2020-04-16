@@ -302,7 +302,7 @@ class NewTaskComputer:
         self._assigned_task: Optional[NewTaskComputer.AssignedTask] = None
         self._computation: Optional[defer.Deferred] = None
         self._app_client: Optional[ProviderAppClient] = None
-        self._start_time: Optional[int] = None
+        self._start_time: Optional[float] = None
 
     def has_assigned_task(self) -> bool:
         return self._assigned_task is not None
@@ -462,10 +462,13 @@ class NewTaskComputer:
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
         if not self._is_computing():
             return None
+        assert self._assigned_task is not None
+        assert self._start_time is not None
         return ComputingSubtaskStateSnapshot(
             subtask_id=self._assigned_task.subtask_id,
             progress=0,
-            seconds_to_timeout=deadline_to_timeout(self._assigned_task.deadline),
+            seconds_to_timeout=deadline_to_timeout(
+                self._assigned_task.deadline),
             running_time_seconds=time.time() - self._start_time,
         )
 
