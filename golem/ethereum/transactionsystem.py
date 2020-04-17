@@ -242,6 +242,7 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
             self._config.CONTRACT_ADDRESSES,
             lambda tx: tx.sign(self._privkey),
         )
+        self._sci.GAS_TRANSFER_FROM_GATE = 150000
 
         gate_address = self._sci.get_gate_address()
         if gate_address is not None:
