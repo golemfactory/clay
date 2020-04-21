@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
@@ -9,15 +10,19 @@ from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerGPUEnvironment,
 )
 from golem.envs.docker.whitelist import Whitelist
-from golem.task.envmanager import EnvironmentManager
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.task.envmanager import EnvironmentManager
+
 
 DOCKER_REPOSITORY = "golemfactoryapps"
 
 
 def _register_docker_cpu_env(
         work_dir: str,
-        env_manager: EnvironmentManager,
+        env_manager: 'EnvironmentManager',
         dev_mode: bool,
 ) -> None:
     docker_cpu_config = DockerCPUConfig(work_dirs=[Path(work_dir)])
@@ -36,7 +41,7 @@ def _register_docker_cpu_env(
 
 def _register_docker_gpu_env(
         work_dir: str,
-        env_manager: EnvironmentManager,
+        env_manager: 'EnvironmentManager',
         dev_mode: bool,
 ) -> None:
     docker_config_dict = dict(work_dirs=[work_dir])
@@ -60,7 +65,7 @@ def register_built_in_repositories():
 
 def register_environments(
         work_dir: str,
-        env_manager: EnvironmentManager,
+        env_manager: 'EnvironmentManager',
         dev_mode: bool,
 ) -> None:
 

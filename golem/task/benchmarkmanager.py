@@ -3,9 +3,8 @@ from copy import copy
 import hashlib
 import json
 import logging
-from pathlib import Path
 from threading import Thread
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Union, Optional, TYPE_CHECKING
 
 from golem_task_api import ProviderAppClient
 
@@ -14,14 +13,20 @@ from apps.core.task.coretaskstate import TaskDesc
 from golem.core.threads import callback_wrapper
 from golem.environments.environment import Environment as DefaultEnvironment
 
-from golem.envs import BenchmarkResult, EnvId
 from golem.model import Performance, AppBenchmark
 from golem.resource.dirmanager import DirManager
 from golem.task import ComputationType
-from golem.task.envmanager import EnvironmentManager
 from golem.task.exceptions import ComputationInProgress
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.taskstate import TaskStatus
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from pathlib import Path
+
+    from golem.envs import BenchmarkResult, EnvId
+    from golem.task.envmanager import EnvironmentManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +57,7 @@ class BenchmarkManager(object):
 
         from golem_messages.datastructures.p2p import Node
 
-        def success_callback(result: BenchmarkResult):
+        def success_callback(result: 'BenchmarkResult'):
             logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
                         env_id, result.performance, result.cpu_usage)
 
@@ -153,8 +158,8 @@ class AppBenchmarkManager:
 
     def __init__(
             self,
-            env_manager: EnvironmentManager,
-            root_path: Path,
+            env_manager: 'EnvironmentManager',
+            root_path: 'Path',
     ) -> None:
         self._env_manager = env_manager
         self._root_path = root_path / 'benchmarks'
@@ -162,7 +167,7 @@ class AppBenchmarkManager:
 
     async def get(
             self,
-            env_id: EnvId,
+            env_id: 'EnvId',
             env_prereq_dict: Dict[str, Any],
     ) -> AppBenchmark:
         prereq_hash = hash_prereq_dict(env_prereq_dict)
@@ -193,7 +198,7 @@ class AppBenchmarkManager:
 
     async def _run_benchmark(
             self,
-            env_id: EnvId,
+            env_id: 'EnvId',
             env_prereq_dict: Dict[str, Any]
     ) -> float:
         env = self._env_manager.environment(env_id)
