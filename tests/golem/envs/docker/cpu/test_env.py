@@ -329,11 +329,6 @@ class TestUpdateConfig(TestDockerCPUEnv):
         with self.assertRaises(AssertionError):
             self.env.update_config(object())
 
-    def test_enabled_status(self):
-        self.env._status = EnvStatus.ENABLED
-        with self.assertRaises(ValueError):
-            self.env.update_config(Mock(spec=DockerCPUConfig))
-
     @patch_env('_validate_config', side_effect=ValueError)
     def test_invalid_config(self, validate):
         config = Mock(spec=DockerCPUConfig)

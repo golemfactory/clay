@@ -2,13 +2,18 @@ from logging import Logger
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
+from dataclasses import dataclass
+
+from twisted.internet import defer
+
 from golem.envs import (
     EnvConfig,
     EnvEvent,
     EnvEventType,
     EnvironmentBase,
     EnvStatus,
-    Prerequisites
+    Prerequisites,
+    delayed_config,
 )
 
 
@@ -121,3 +126,87 @@ class TestListen(TestEnvironmentBase):
         self.assertEqual(self.env._event_listeners, {
             EnvEventType.ERROR_OCCURRED: {listener}
         })
+
+
+@dataclass
+class MyConfig(EnvConfig):
+    i: int
+
+    def to_dict(self) -> dict:
+        pass
+
+    @staticmethod
+    def from_dict(data):
+        pass
+
+
+@delayed_config
+class MyEnv(EnvironmentBase):
+    def __init__(self, config: MyConfig) -> None:
+        super().__init__()
+        self._config = config
+
+    def update_config(self, config: EnvConfig) -> None:
+        assert isinstance(config, MyConfig)
+        self._logger.debug("dupa %r", self._event_listeners)
+        if self._status != EnvStatus.DISABLED:
+            raise ValueError
+        self._config = config
+        self._config_updated(config)
+
+    def config(self) -> MyConfig:
+        return self._config
+
+    @classmethod
+    def supported(cls):
+        raise NotImplementedError
+
+    def prepare(self):
+        raise NotImplementedError
+
+    def clean_up(self):
+        raise NotImplementedError
+
+    def run_benchmark(self):
+        raise NotImplementedError
+
+    def parse_prerequisites(self, prerequisites_dict):
+        raise NotImplementedError
+
+    def install_prerequisites(self, prerequisites):
+        raise NotImplementedError
+
+    def parse_config(self, config_dict):
+        raise NotImplementedError
+
+    def supported_usage_counters(self):
+        raise NotImplementedError
+
+    def runtime(self, payload, config=None):
+        raise NotImplementedError
+
+
+def execute(f, *args, **kwargs):
+    try:
+        return defer.succeed(f(*args, **kwargs))
+    except Exception as exc:  # pylint: disable=broad-except
+        return defer.fail(exc)
+
+
+@patch('golem.envs.deferToThread', execute)
+class TestDelayedConfig(TestCase):
+
+    def setUp(self) -> None:
+        config = MyConfig(i=1)
+        self.env = MyEnv(config)
+
+    def test_update_config_when_disabled(self):
+        self.env.update_config(MyConfig(i=2))
+        self.assertEqual(self.env.config().i, 2)
+
+    def test_update_config_when_enabled(self):
+        self.env._env_enabled()
+        self.env.update_config(MyConfig(i=2))
+        self.assertEqual(self.env.config().i, 1)
+        self.env._env_disabled()
+        self.assertEqual(self.env.config().i, 2)

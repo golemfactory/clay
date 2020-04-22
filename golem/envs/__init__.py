@@ -6,7 +6,7 @@ from logging import Logger, getLogger
 from threading import RLock
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager, Set, Tuple, TYPE_CHECKING
+    Sequence, Iterable, ContextManager, Set, Tuple, Type, TYPE_CHECKING
 
 from dataclasses import dataclass, field
 from twisted.internet.threads import deferToThread
@@ -599,3 +599,38 @@ class EnvironmentBase(Environment, ABC):
             listener: EnvEventListener
     ) -> None:
         self._event_listeners.setdefault(event_type, set()).add(listener)
+
+
+def delayed_config(cls: Type[Environment]) -> Type[Environment]:
+    """
+    This class decorator allows to save config update and apply it, when env is
+    disabled.
+    """
+    # FIXME workaround https://github.com/python/mypy/issues/5865
+    cls2: Any = cls
+
+    class DelayedConfigWrapper(cls2):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self._next_config: Optional[EnvConfig] = None
+
+            def apply_next_config(_):
+                if self._next_config is None:
+                    return
+                self._logger.debug("Applying saved config")
+                config = self._next_config
+                self._next_config = None
+                cls.update_config(self, config)
+
+            self.listen(EnvEventType.DISABLED, apply_next_config)
+
+        def update_config(self, new_config: EnvConfig) -> None:
+            if self._status == EnvStatus.DISABLED:
+                self._logger.debug("Config applied immediately")
+                super().update_config(new_config)
+                return
+
+            self._logger.debug("Config saved for later")
+            self._next_config = new_config
+
+    return DelayedConfigWrapper
