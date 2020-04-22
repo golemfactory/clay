@@ -308,6 +308,11 @@ class BasicProtocol(SessionProtocol):
         if msg_to_send is None:
             return False
 
+        logger.debug(
+            "sending message. msg_to_send=%s, transport=%s",
+            msg_to_send, self.transport
+        )
+
         self.transport.getHandle()
         self.transport.write(msg_to_send)
 

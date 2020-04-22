@@ -1,16 +1,18 @@
-from ..wasm_vbr_success.playbook import Playbook as WasmTestPlaybook
+from ...base import NodeTestPlaybook
+
+#from ..wasm_vbr_success.playbook import Playbook as WasmTestPlaybook
 
 
-class Playbook(WasmTestPlaybook):
+class Playbook(NodeTestPlaybook):
 
     REDUNDANCY_FACTOR = 1
 
-    steps = WasmTestPlaybook.initial_steps + (
+    steps = NodeTestPlaybook.initial_steps + (
 
-        WasmTestPlaybook.step_create_task,
-        WasmTestPlaybook.step_get_task_id,
-        WasmTestPlaybook.step_get_task_status,
+        NodeTestPlaybook.step_create_task,
+        NodeTestPlaybook.step_get_task_id,
+        NodeTestPlaybook.step_get_task_status,
 
-        WasmTestPlaybook.step_wait_task_finished,
+        NodeTestPlaybook.step_wait_task_finished,
 
     )
