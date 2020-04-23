@@ -1,17 +1,16 @@
 # pylint: disable=too-many-lines
 
 import collections
+import datetime
 import enum
 import logging
 import sys
 import time
 import uuid
 from copy import copy, deepcopy
-from datetime import timedelta
 from typing import (
     Any,
     Dict,
-    Hashable,
     Iterable,
     List,
     Optional,
@@ -21,7 +20,9 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
+from golem_task_api.envs import DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -33,6 +34,7 @@ from apps.appsmanager import AppsManager
 import golem
 from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
+from golem.apps.default import APPS
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
@@ -58,6 +60,7 @@ from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network import broadcast
 from golem.network import nodeskeeper
 from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
@@ -76,8 +79,8 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
-from golem.task import taskpreset
-from golem.task import taskstate
+from golem.task import taskpreset, taskstate
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -190,7 +193,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
-            DailyJobsService(),
+            DailyJobsService(self),
         ]
 
         clean_resources_older_than = \
@@ -260,9 +263,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
+        from golem.rpc.api import broadcast_ as api_broadcast
         from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
+        from golem.apps import rpc as apps_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
+        app_rpc_provider = apps_rpc.ClientAppProvider(
+            self.task_server.app_manager
+        )
         providers = (
             self,
             concent_soft_switch,
@@ -273,7 +281,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
+            app_rpc_provider,
             api_ethereum.ETSProvider(self.transaction_system),
+            api_broadcast,
         )
         mapping = {}
         for rpc_provider in providers:
@@ -759,11 +769,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
         rtm = self.task_server.requested_task_manager
+        is_active = False
         if rtm.task_exists(task_id):
+            is_active = rtm.get_requested_task(task_id).status.is_active()
             yield deferred_from_future(rtm.delete_task(task_id))
         else:
+            is_active = self.task_server.task_manager.is_task_active(task_id)
             self.task_server.task_manager.delete_task(task_id)
-        self.funds_locker.remove_task(task_id)
+        if is_active:
+            self.funds_locker.remove_task(task_id)
 
     @rpc_utils.expose('comp.task.purge')
     @inlineCallbacks
@@ -846,12 +860,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return value
 
     @rpc_utils.expose('env.opt.update')
-    def update_setting(self, key, value):
+    def update_setting(self, key, value, update_config=True):
         logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
-        self.change_config(self.config_desc)
+        if update_config:
+            self.change_config(self.config_desc)
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
@@ -896,14 +911,65 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+            # time_started
             if task.start_time is None:
-                time_started = model.default_now().timestamp()
+                time_started = get_timestamp_utc()
+                if task.status == taskstate.TaskStatus.errorCreating:
+                    time_started -= 1
             else:
                 time_started = task.start_time.timestamp()
+            # proress and time_remaining
+            finished_subtasks = rtm.count_finished_subtasks(task.task_id)
+            progress = finished_subtasks / task.max_subtasks
+            time_remaining = None
+            if progress > 0.0 and not task.status.is_completed():
+                elapsed = task.elapsed_seconds
+                time_remaining = (elapsed / progress) - elapsed
+            # type
+            app_name = 'Unknown'
+            if task.app_id in APPS:
+                app = APPS[task.app_id]
+                app_name = app.name
+            # last_updated
+            if task.end_time is None:
+                last_updated = get_timestamp_utc()
+            else:
+                last_updated = task.end_time.timestamp()
+            # compute_on
+            compute_on = 'cpu'
+            if task.env_id == DOCKER_GPU_ENV_ID:
+                compute_on = 'gpu'
+            # estimated_cost and estimated_fee
+            subtask_price = calculate_subtask_payment(
+                task.max_price_per_hour,
+                task.subtask_timeout
+            )
+            estimated_cost = subtask_price * task.max_subtasks
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.max_subtasks
+            )
             task_dict = {
                 'id': task.task_id,
+                'time_remaining': time_remaining,
+                'subtasks_count': task.max_subtasks,
                 'status': task.status.value,
+                'progress': progress,
                 'time_started': time_started,
+                'last_updated': last_updated,
+                'name': task.name,
+                'bid': float(task.max_price_per_hour) / denoms.ether,
+                'compute_on': compute_on,
+                'concent_enabled': task.concent_enabled,
+                'subtask_timeout': str(
+                    datetime.timedelta(seconds=task.subtask_timeout),
+                ),
+                'timeout': str(datetime.timedelta(seconds=task.task_timeout)),
+                'type': app_name,
+                'options': {
+                    'output_path': task.output_directory
+                },
+                'estimated_cost': estimated_cost,
+                'estimated_fee': estimated_fee,
             }
         else:
             # OLD taskmanager
@@ -1489,12 +1555,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
 
 class DoWorkService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self, client: Client) -> None:
         super().__init__(interval_seconds=1)
         self._client = client
-        self._check_ts: Dict[Hashable, Any] = {}
 
     def start(self):
         super().start(now=False)
@@ -1523,17 +1586,8 @@ class DoWorkService(LoopingCallService):
         except Exception:
             logger.exception("ranking.sync_network failed")
 
-    def _time_for(self, key: Hashable, interval_seconds: float):
-        now = time.time()
-        if now >= self._check_ts.get(key, 0):
-            self._check_ts[key] = now + interval_seconds
-            return True
-        return False
-
 
 class MonitoringPublisherService(LoopingCallService):
-    _task_server = None  # type: TaskServer
-
     def __init__(self,
                  task_server: TaskServer,
                  interval_seconds: int) -> None:
@@ -1576,29 +1630,32 @@ class MonitoringPublisherService(LoopingCallService):
 
 
 class NetworkConnectionPublisherService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
-
-    def _run_async(self):
-        # Skip the async_run call and publish events in the main thread
-        self._run()
+        self._last_value = self.poll()
 
     def _run(self):
-        self._client._publish(Network.evt_connection,
-                              self._client.connection_status())
+        current_value = self.poll()
+        if current_value == self._last_value:
+            return
+        self._last_value = current_value
+        self._client._publish(  # pylint: disable=protected-access
+            Network.evt_connection,
+            self._last_value,
+        )
+
+    def poll(self) -> Dict[str, Any]:
+        return self._client.connection_status()
 
 
 class TaskArchiverService(LoopingCallService):
-    _task_archiver = None  # type: TaskArchiver
-
     def __init__(self,
                  task_archiver: TaskArchiver) -> None:
-        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
+        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL,
+                         run_in_thread=True)
         self._task_archiver = task_archiver
 
     def _run(self):
@@ -1606,14 +1663,11 @@ class TaskArchiverService(LoopingCallService):
 
 
 class ResourceCleanerService(LoopingCallService):
-    _client = None  # type: Client
-    older_than_seconds = 0  # type: int
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int,
                  older_than_seconds: int) -> None:
-        super().__init__(interval_seconds)
+        super().__init__(interval_seconds, run_in_thread=True)
         self._client = client
         self.older_than_seconds = older_than_seconds
 
@@ -1625,8 +1679,6 @@ class ResourceCleanerService(LoopingCallService):
 
 
 class TaskCleanerService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int) -> None:
@@ -1638,7 +1690,6 @@ class TaskCleanerService(LoopingCallService):
 
 
 class MaskUpdateService(LoopingCallService):
-
     def __init__(
             self,
             requested_task_manager: 'RequestedTaskManager',
@@ -1685,16 +1736,29 @@ class MaskUpdateService(LoopingCallService):
 
 
 class DailyJobsService(LoopingCallService):
-    def __init__(self):
+    def __init__(self, client: Client):
         super().__init__(
-            interval_seconds=timedelta(days=1).total_seconds(),
+            interval_seconds=int(datetime.timedelta(days=1).total_seconds()),
         )
+        self._client = client
 
     def _run(self) -> None:
-        jobs = (
+        jobs = [
             nodeskeeper.sweep,
             msg_queue.sweep,
-        )
+            broadcast.sweep,
+            lambda: logger.info(
+                "Time marker. time(): %s now(): %s, utcnow(): %s, delta: %s",
+                time.time(),
+                datetime.datetime.now(),
+                datetime.datetime.utcnow(),
+                datetime.datetime.now() - datetime.datetime.utcnow(),
+            ),
+        ]
+
+        if self._client.task_server:
+            jobs.append(self._client.task_server.app_manager.update_apps)
+
         logger.info('Running daily jobs')
         for job in jobs:
             try:

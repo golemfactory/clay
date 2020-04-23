@@ -3,4 +3,4 @@ altgraph==0.16.1
 future==0.16.0
 macholib==1.11
 pefile==2017.11.5
-PyInstaller==3.3.1
+PyInstaller==3.6

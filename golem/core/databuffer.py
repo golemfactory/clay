@@ -100,7 +100,7 @@ class DataBuffer:
         """
         ret_bytes = None
 
-        if (self.data_size() > LONG_STANDARD_SIZE and
+        if (self.data_size() >= LONG_STANDARD_SIZE and
                 self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE)):
             num_bytes = self.read_ulong()
             ret_bytes = self.read_bytes(num_bytes)

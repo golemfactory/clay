@@ -6,18 +6,42 @@ from logging import Logger, getLogger
 from threading import RLock
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager, Set, Tuple
+    Sequence, Iterable, ContextManager, Set, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass, field
-from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
-from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
 from golem.model import Performance
 
-CounterId = str
-CounterUsage = Any
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from twisted.internet.defer import Deferred
+    from twisted.python.failure import Failure
+
+
+class UsageCounter(Enum):
+    CLOCK_MS = 'clock_ms'
+
+    CPU_TOTAL_NS = 'cpu_total_ns'
+    CPU_USER_NS = 'cpu_user_ns'
+    CPU_KERNEL_NS = 'cpu_kernel_ns'
+
+    RAM_MAX_BYTES = 'ram_max_bytes'
+    RAM_AVG_BYTES = 'ram_avg_bytes'
+
+
+@dataclass
+class UsageCounterValues:
+    clock_ms: float = 0.0
+
+    cpu_total_ns: float = 0.0
+    cpu_user_ns: float = 0.0
+    cpu_kernel_ns: float = 0.0
+
+    ram_max_bytes: int = 0
+    ram_avg_bytes: float = 0.0
+
 
 EnvId = str
 RuntimeId = str
@@ -172,31 +196,31 @@ class Runtime(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def prepare(self) -> Deferred:
+    def prepare(self) -> 'Deferred':
         """ Prepare the Runtime to be started. Assumes current status is
             'CREATED'. """
         raise NotImplementedError
 
     @abstractmethod
-    def clean_up(self) -> Deferred:
+    def clean_up(self) -> 'Deferred':
         """ Clean up after the Runtime has finished running. Assumes current
             status is 'STOPPED' or 'FAILURE'. In the latter case it is not
             guaranteed that the cleanup will be successful. """
         raise NotImplementedError
 
     @abstractmethod
-    def start(self) -> Deferred:
+    def start(self) -> 'Deferred':
         """ Start the computation. Assumes current status is 'PREPARED'. """
         raise NotImplementedError
 
     @abstractmethod
-    def wait_until_stopped(self) -> Deferred:
+    def wait_until_stopped(self) -> 'Deferred':
         """ Can be called after calling `start` to wait until the runtime has
             stopped """
         raise NotImplementedError
 
     @abstractmethod
-    def stop(self) -> Deferred:
+    def stop(self) -> 'Deferred':
         """ Interrupt the computation. Assumes current status is 'RUNNING'. """
         raise NotImplementedError
 
@@ -238,7 +262,7 @@ class Runtime(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
+    def usage_counter_values(self) -> UsageCounterValues:
         """ For each usage counter supported by the Environment (e.g. clock
             time) get current usage by this Runtime. """
         raise NotImplementedError
@@ -356,7 +380,7 @@ class RuntimeBase(Runtime, ABC):
                 'message': message
             })
 
-    def _error_callback(self, message: str) -> Callable[[Failure], Failure]:
+    def _error_callback(self, message: str) -> 'Callable[[Failure], Failure]':
         """ Get an error callback accepting Twisted's Failure object that will
             call _error_occurred(). """
         def _callback(failure):
@@ -375,7 +399,7 @@ class RuntimeBase(Runtime, ABC):
     ) -> None:
         self._event_listeners.setdefault(event_type, set()).add(listener)
 
-    def wait_until_stopped(self) -> Deferred:
+    def wait_until_stopped(self) -> 'Deferred':
         """ Can be called after calling `start` to wait until the runtime has
             stopped """
         def _wait_until_stopped():
@@ -388,7 +412,6 @@ class RuntimeBase(Runtime, ABC):
 class EnvMetadata:
     id: EnvId
     description: str = ''
-    supported_counters: List[CounterId] = field(default_factory=list)
     custom_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -419,18 +442,18 @@ class Environment(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def prepare(self) -> Deferred:
+    def prepare(self) -> 'Deferred':
         """ Activate the Environment. Assumes current status is 'DISABLED'. """
         raise NotImplementedError
 
     @abstractmethod
-    def clean_up(self) -> Deferred:
+    def clean_up(self) -> 'Deferred':
         """ Deactivate the Environment. Assumes current status is 'ENABLED' or
             'ERROR'. """
         raise NotImplementedError
 
     @abstractmethod
-    def run_benchmark(self) -> Deferred:
+    def run_benchmark(self) -> 'Deferred':
         """ Get the general performance score for this environment. """
         raise NotImplementedError
 
@@ -442,7 +465,7 @@ class Environment(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+    def install_prerequisites(self, prerequisites: Prerequisites) -> 'Deferred':
         """ Prepare Prerequisites for running a computation. Assumes current
             status is 'ENABLED'.
             Returns boolean indicating whether installation was successful. """
@@ -471,6 +494,10 @@ class Environment(ABC):
             listener: EnvEventListener
     ) -> None:
         """ Register a listener for a given type of Environment events. """
+        raise NotImplementedError
+
+    def supported_usage_counters(self) -> List[UsageCounter]:
+        """ Get list of usage counters supported by this environment. """
         raise NotImplementedError
 
     @abstractmethod

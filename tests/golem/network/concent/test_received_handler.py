@@ -187,6 +187,7 @@ class TaskServerMessageHandlerTestBase(
         # Remove registered handlers
         del self.task_server
         gc.collect()
+        super().tearDown()
 
 
 class IsOursTest(TaskServerMessageHandlerTestBase):
@@ -629,7 +630,7 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
 
         extract.assert_called_once()
         verify_results.assert_called_once_with(
-            report_computed_task=self.rct, extracted_package=ep
+            report_computed_task=self.rct, files=ep.get_full_path_files()
         )
 
     @mock.patch('golem.network.concent.received_handler.logger.warning')

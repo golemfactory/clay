@@ -562,26 +562,6 @@ class TestDoWorkService(testwithreactor.TestWithReactor):
         assert logger.exception.call_count == 4
 
     @freeze_time("2018-01-01 00:00:00")
-    def test_time_for(self):
-        key = 'payments'
-        interval = 4.0
-
-        assert key not in self.do_work_service._check_ts
-        assert self.do_work_service._time_for(key, interval)
-        assert key in self.do_work_service._check_ts
-
-        next_check = self.do_work_service._check_ts[key]
-
-        with freeze_time("2018-01-01 00:00:01"):
-            assert not self.do_work_service._time_for(key, interval)
-            assert self.do_work_service._check_ts[key] == next_check
-
-        with freeze_time("2018-01-01 00:01:00"):
-            assert self.do_work_service._time_for(key, interval)
-            assert self.do_work_service._check_ts[
-                key] == time.time() + interval
-
-    @freeze_time("2018-01-01 00:00:00")
     def test_intervals(self):
         self.do_work_service._run()
 
@@ -641,7 +621,9 @@ class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
         )
 
     @patch('golem.client.logger')
-    def test_run(self, logger):
+    @patch('golem.client.NetworkConnectionPublisherService.poll')
+    def test_run(self, poll_mock, logger):
+        poll_mock.return_value = {'random_key': random.random()}
         self.service._run()
 
         logger.debug.assert_not_called()
@@ -922,6 +904,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.remove_task_header = Mock()
         c.task_server.remove_task_header = Mock()
         c.task_server.task_manager.delete_task = Mock()
+        c.task_server.task_manager.is_active = Mock(return_value=False)
 
         task_id = str(uuid.uuid4())
         sync_wait(c.delete_task(task_id))

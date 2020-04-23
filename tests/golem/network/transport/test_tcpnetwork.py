@@ -3,9 +3,9 @@ import struct
 import unittest
 from unittest import mock
 
-import golem_messages
 import semantic_version
 from freezegun import freeze_time
+import golem_messages
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
@@ -32,10 +32,13 @@ class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
 class TestBasicProtocol(LogTestCase):
 
     def setUp(self):
-        self.protocol = tcpnetwork.BasicProtocol()
-        self.protocol.session = mock.MagicMock()
-        self.protocol.session.my_private_key = None
-        self.protocol.session.theirs_public_key = None
+        session_mock = mock.MagicMock()
+        session_mock.my_private_key = None
+        session_mock.theirs_private_key = None
+        self.protocol = tcpnetwork.BasicProtocol(
+            mock.MagicMock(return_value=session_mock),
+        )
+
         self.protocol.transport = mock.MagicMock()
 
     def test_init(self):
@@ -44,11 +47,13 @@ class TestBasicProtocol(LogTestCase):
     @mock.patch('golem_messages.load')
     def test_dataReceived(self, load_mock):
         data = b"abc"
-        self.assertIsNone(self.protocol.dataReceived(data))
-        self.protocol.opened = True
-        self.assertIsNone(self.protocol.dataReceived(data))
+        # can_receive() returns False
+        self.protocol.dataReceived(data)
+
+        self.protocol.connectionMade()
+        self.protocol.dataReceived(data)
         self.protocol.db.clear_buffer()
-        self.assertEqual(load_mock.call_count, 0)
+        load_mock.assert_not_called()
 
         m = message.base.Disconnect(reason=None)
         data = m.serialize()
@@ -61,8 +66,8 @@ class TestBasicProtocol(LogTestCase):
         'golem.network.transport.tcpnetwork.BasicProtocol._load_message'
     )
     def test_dataReceived_long(self, load_mock):
+        self.protocol.connectionMade()
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
-        self.protocol.opened = True
         self.assertIsNone(self.protocol.dataReceived(data))
         self.assertEqual(load_mock.call_count, 0)
 
@@ -101,11 +106,14 @@ class TestBasicProtocol(LogTestCase):
 
 class SafeProtocolTestCase(unittest.TestCase):
     def setUp(self):
-        self.protocol = SafeProtocol(MagicMock())
-        self.protocol.opened = True
-        self.protocol.session = mock.MagicMock()
-        self.protocol.session.my_private_key = None
-        self.protocol.session.theirs_public_key = None
+        session_mock = mock.MagicMock()
+        session_mock.my_private_key = None
+        session_mock.theirs_private_key = None
+        self.protocol = SafeProtocol(
+            MagicMock(return_value=session_mock),
+            MagicMock(),
+        )
+        self.protocol.connectionMade()
 
     @mock.patch('golem_messages.load')
     def test_drop_set_task(self, load_mock):
@@ -136,7 +144,7 @@ class TestSocketAddress(unittest.TestCase):
         address = "fe80::3%eth0"
         port = 1111
         sa = SocketAddress(address, port)
-        assert sa.address == base_address
+        self.assertEqual(sa.address, base_address)
         assert sa.port == port
 
         address = "fe80::3%1"
@@ -152,7 +160,7 @@ class TestSocketAddress(unittest.TestCase):
         assert sa.address == base_address
 
     def test_is_proper_address(self):
-        assert SocketAddress.is_proper_address("127.0.0.1", 1020)
+        self.assertTrue(SocketAddress.is_proper_address("127.0.0.1", 1020))
         assert not SocketAddress.is_proper_address("127.0.0.1", 0)
         assert not SocketAddress.is_proper_address("127.0.0.1", "ABC")
         assert not SocketAddress.is_proper_address("AB?*@()F*)A", 1020)
@@ -194,3 +202,44 @@ class TestTCPNetworkConnections(unittest.TestCase):
         connect_all(TCPConnectInfo(self.addresses, mock.Mock(), mock.Mock()))
         assert not connect.called
         assert call.called
+
+
+class TestBrodcastProtocol(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.session_factory = mock.MagicMock()
+        self.server = mock.MagicMock()
+        self.protocol = tcpnetwork.BroadcastProtocol(
+            session_factory=self.session_factory,
+            server=self.server,
+        )
+        self.protocol.transport = mock.MagicMock()
+        self.protocol.transport.loseConnection.side_effect = \
+            lambda: self.protocol.connectionLost()
+        self.broadcast_data = b'B\x00\x00\x00\x00\x00'  # empty
+        self.msg_data = b'\x00\x00\x02\xcd\x00\x00\x00\x00\x00\x00^jJv\x00`]\x88wO\xc5z\xa9\xf5\xa9\xb1\x94\xb7\x86\xe42\xe0\r\xd9\xb3d{(a4\xe1\xbaH\xfc\x07\x9bCY\xe8l\x0b?\n\xcf\xc5g\xc3\xbb\xf30\x8f\x98\xb5\x0cK\x00\x81(\xa2\x8ffhjXO\x93\x98\xeb"\x00\x89\x82hrand_val\xfb?\xc5\xffU\xa8rlm\x82hproto_idb32\x82inode_info\xadinode_namepmainnet-gf-1 gitckeyx\x800c706778f7442d63c626dbdd7cbcf3cad62071f0328ce4987249389aad854203d13547f8f1e1a967a9cc1700f9def0d5a25d88ec5d9d596f7beb2cebbddcba13hprv_port\x19\x9c\xa7hpub_port\x19\x9c\xa7lp2p_prv_port\x19\x9c\xa6lp2p_pub_port\x19\x9c\xa6hprv_addrm172.31.57.199hpub_addrm18.197.86.211mprv_addresses\x82m172.31.57.199j172.17.0.1shyperdrive_prv_port\x19\x0c\xd2shyperdrive_pub_port\x19\x0c\xd2mport_statuses\xa3\x19\x9c\xa6dopen\x19\x9c\xa7dopen\x19\x0c\xd2dopenhnat_type\x80\x82dport\x19\x9c\xa6\x82jclient_verf0.22.1\x82osolve_challenge\xf4\x82ichallenge\xf6\x82jdifficulty\xf6\x82hmetadata\xa1kperformance\xa4gBLENDER\xfb@b\xa5\xbf\x84\xc3\xdb\x02mBLENDER_NVGPU\xfb\x00\x00\x00\x00\x00\x00\x00\x00dWASM\xfb@\x85\x91g\\\xf0vNgDEFAULT\xfb@\x9e6\xc0\x02\xfb)y\x063.14.2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # noqa pylint: disable=line-too-long
+
+    def test_no_marker(self):
+        self.protocol.connectionMade()
+        self.protocol.dataReceived(self.msg_data)
+        self.assertTrue(self.protocol.is_disconnected())
+
+    @mock.patch(
+        'golem.network.broadcast.prepare_handshake',
+        return_value=[],
+    )
+    @mock.patch(
+        'golem.network.transport.tcpnetwork'
+        '.BasicProtocol._data_to_messages',
+        return_value=[],
+    )
+    def test_broadcast_and_message(
+            self,
+            mock_data_to_messages,
+            mock_prepare_handshake,
+    ):
+        self.protocol.connectionMade()
+        self.protocol.dataReceived(self.broadcast_data+self.msg_data)
+        mock_data_to_messages.assert_called_once_with()
+        self.assertEqual(self.protocol.db.data_size(), 721)
+        mock_prepare_handshake.assert_called_once_with()

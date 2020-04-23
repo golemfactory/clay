@@ -24,11 +24,14 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.environments.environmentsmanager import \
-    EnvironmentsManager as OldEnvManager
-from golem.task.envmanager import EnvironmentManager as NewEnvManager
-from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskproviderstats import ProviderStatsManager
+
+if typing.TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.environments.environmentsmanager import \
+        EnvironmentsManager as OldEnvManager
+    from golem.task.envmanager import EnvironmentManager as NewEnvManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +51,14 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader, performance: float) -> None:
+    def __init__(
+            self,
+            header: dt_tasks.TaskHeader,
+            performance: float,
+            num_subtasks: int) -> None:
         self.header = header
         self.performance = performance
-        self.requests = 1
+        self.requests = num_subtasks
         self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
@@ -166,21 +173,30 @@ class CompTaskKeeper:
     def add_request(
             self,
             theader: dt_tasks.TaskHeader,
-            price: int,
-            performance: float
+            budget: int,
+            performance: float,
+            num_subtasks: int,
     ):
-        # price is task_header.max_price
-        logger.debug('CT.add_request(%r, %s)', theader, price)
-        if price < 0:
-            raise ValueError("Price should be greater or equal zero")
+        logger.debug(
+            'CompTaskKeeper: add_request. theader=%r, budget=%r',
+            theader,
+            budget
+        )
+
+        if budget < 0:
+            raise ValueError("Budget should be greater than zero.")
         task_id = theader.task_id
         if task_id in self.active_tasks:
-            self.active_tasks[task_id].requests += 1
+            self.active_tasks[task_id].requests += num_subtasks
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader, performance)
-        self.active_task_offers[task_id] = calculate_subtask_payment(
-            price, self.active_tasks[task_id].header.subtask_timeout
-        )
+            self.active_tasks[task_id] = CompTaskInfo(
+                theader, performance, num_subtasks)
+
+        logger.debug(
+            "CT added active task: task_id=%s, requests=%s",
+            task_id, self.active_tasks[task_id].requests)
+
+        self.active_task_offers[task_id] = budget
         self.dump()
 
     @handle_key_error
@@ -189,7 +205,7 @@ class CompTaskKeeper:
 
     @handle_key_error
     def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
-        logger.debug('CT.receive_subtask()')
+        logger.debug('receive_subtask. task_to_compute=%r', task_to_compute)
 
         comp_task_def = task_to_compute.compute_task_def
         if not self.check_comp_task_def(comp_task_def):
@@ -198,16 +214,17 @@ class CompTaskKeeper:
         task_id = task_to_compute.task_id
         subtask_id = task_to_compute.subtask_id
         comp_task_info = self.active_tasks[task_id]
-        comp_task_price = self.active_task_offers[task_id]
+        subtask_budget = self.active_task_offers[task_id]
 
-        if task_to_compute.price != comp_task_price:
+        if task_to_compute.price != subtask_budget:
             logger.info(
-                "Can't accept subtask %r for %r."
-                " %r<TTC.price> != %r<CTI.subtask_price>",
-                task_to_compute.subtask_id,
-                task_to_compute.task_id,
+                "Can't accept subtask: "
+                "%r (TTC.price) != %r (subtask_budget). "
+                "task_id=%r, subtask_id=%r",
                 task_to_compute.price,
-                comp_task_price,
+                subtask_budget,
+                task_to_compute.task_id,
+                task_to_compute.subtask_id,
             )
             return False
 
@@ -216,6 +233,10 @@ class CompTaskKeeper:
         header = self.get_task_header(task_id)
         comp_task_info.keeping_deadline = comp_task_info_keeping_timeout(
             header.subtask_timeout, task_to_compute.size)
+
+        logger.debug(
+            "CT received subtask: task_id=%s, subtask_id=%s, requests=%s",
+            task_id, subtask_id, self.active_tasks[task_id].requests)
 
         self.subtask_to_task[subtask_id] = task_id
         self.dump()
@@ -230,13 +251,16 @@ class CompTaskKeeper:
         if not idgenerator.check_id_hex_seed(
                 comp_task_def['subtask_id'],
                 key_id,):
-            logger.info(not_accepted_message, *log_args, "Subtask id was not "
-                                                         "generated from "
-                                                         "requestor's key.")
+            logger.info(
+                not_accepted_message,
+                *log_args,
+                "Subtask id was not generated from requestor's key.")
             return False
         if not task.requests > 0:
-            logger.info(not_accepted_message, *log_args,
-                        "Request for this task was not send.")
+            logger.info(
+                not_accepted_message,
+                *log_args,
+                "Request for this task was not sent.")
 
             return False
         if not task.check_deadline(comp_task_def['deadline']):
@@ -245,8 +269,10 @@ class CompTaskKeeper:
             logger.info(not_accepted_message, *log_args, msg)
             return False
         if comp_task_def['subtask_id'] in task.subtasks:
-            logger.info(not_accepted_message, *log_args,
-                        "Definition of this subtask was already received.")
+            logger.info(
+                not_accepted_message,
+                *log_args,
+                "Definition of this subtask was already received.")
             return False
         return True
 
@@ -305,9 +331,9 @@ class TaskHeaderKeeper:
 
     def __init__(
             self,
-            old_env_manager: OldEnvManager,
+            old_env_manager: 'OldEnvManager',
             # FIXME: rename to `env_manager` when old env manager is removed
-            new_env_manager: NewEnvManager,
+            new_env_manager: 'NewEnvManager',
             node: dt_p2p.Node,
             min_price=0.0,
             remove_task_timeout=180,

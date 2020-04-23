@@ -5,8 +5,8 @@ from golem_sci import contracts
 from golem_sci.chains import RINKEBY
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
-from golem.core.variables import PROTOCOL_CONST, CONCENT_CHOICES
-from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE
+from golem.core.variables import PROTOCOL_CONST
+from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE, init_concent_config
 
 # CORE
 
@@ -26,10 +26,10 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
         self.IS_MAINNET = False
         self.ACTIVE_NET = TESTNET
         self.NODE_LIST = [
-            'https://rinkeby.golem.network:55555',
-            'http://188.165.227.180:55555',
-            'http://94.23.17.170:55555',
-            'http://94.23.57.58:55555',
+            'https://0.geth.testnet.golem.network:55555',
+            'http://1.geth.testnet.golem.network:55555',
+            'http://2.geth.testnet.golem.network:55555',
+            'http://3.geth.testnet.golem.network:55555',
         ]
 
         self.FALLBACK_NODE_LIST: List[str] = [
@@ -48,29 +48,22 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
             CONCENT_ENVIRONMENT_VARIABLE, 'test'
         )
 
-        self.CONCENT_VARIANT = CONCENT_CHOICES[
-            os.environ.get(CONCENT_ENVIRONMENT_VARIABLE, 'disabled')
-        ]
-
-        self.deposit_contract_address = \
-            self.CONCENT_VARIANT.get('deposit_contract_address')
-
-        if self.deposit_contract_address:
-            self.CONTRACT_ADDRESSES[contracts.GNTDeposit] = \
-                self.deposit_contract_address
+        init_concent_config(self)
 
         self.WITHDRAWALS_ENABLED = False
 
 
 # P2P
 
+BROADCAST_PUBKEY = b'\xbe\x0e\xb0@\xad\xad~\xd7\xe3\xca\x96*k\x7f\x0b*\x96++\xb0{\x95+n~\xfdF\xc8\x88\xff\x06\x93cr\xb3\xcb@\xc8Y\xd5n\x98|\xec\x90$\xf2E\xf9\xbbyh:\x99"\xaf\xa2-\xc9os:\xb6\x88'  # noqa pylint: disable=line-too-long
+
 P2P_SEEDS = [
-    ('94.23.57.58', 40102),
-    ('94.23.57.58', 40104),
-    ('94.23.196.166', 40102),
-    ('94.23.196.166', 40104),
-    ('188.165.227.180', 40102),
-    ('188.165.227.180', 40104),
+    ('0.seeds.testnet.golem.network', 40102),
+    ('0.seeds.testnet.golem.network', 40104),
+    ('1.seeds.testnet.golem.network', 40102),
+    ('1.seeds.testnet.golem.network', 40104),
+    ('2.seeds.testnet.golem.network', 40102),
+    ('2.seeds.testnet.golem.network', 40104),
     ('seeds.test.golem.network', 40102),
     ('seeds.test.golem.network', 40104),
 ]

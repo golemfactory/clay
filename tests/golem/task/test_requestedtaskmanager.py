@@ -13,7 +13,8 @@ import pytest
 from twisted.internet import defer
 
 from golem.apps.manager import AppManager
-from golem.model import default_now, RequestedTask, RequestedSubtask
+from golem.core.common import default_now
+from golem.model import RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
 from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (
@@ -81,7 +82,7 @@ class TestRequestedTaskManager:
         self.rtm._time_out_task = Mock()
         self.rtm._time_out_subtask = Mock()
 
-        task_id = self._create_task()
+        task_id = await self._create_task()
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
         computing_node = self._get_computing_node()
@@ -101,9 +102,9 @@ class TestRequestedTaskManager:
         # given
         self._add_next_subtask_to_client_mock(mock_client)
 
-        task_id = self._create_task(
-            task_timeout=20000,
-            subtask_timeout=20000)
+        task_id = await self._create_task(
+            task_timeout=20,
+            subtask_timeout=20)
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
         computing_node = self._get_computing_node()
@@ -119,12 +120,13 @@ class TestRequestedTaskManager:
             call(task_id, ANY, ANY),
         ])
 
-    def test_create_task(self):
+    @pytest.mark.asyncio
+    async def test_create_task(self):
         # given
         golem_params = self._build_golem_params()
         app_params = {}
         # when
-        task_id = self.rtm.create_task(golem_params, app_params)
+        task_id = await self.rtm.create_task(golem_params, app_params)
         # then
         row = RequestedTask.get(RequestedTask.task_id == task_id)
         assert row.status == TaskStatus.creating
@@ -134,7 +136,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_init_task(self, mock_client):
         # given
-        task_id = self._create_task()
+        task_id = await self._create_task()
         env_id = 'test_env'
         prerequisites = {'key': 'value'}
         mock_client.create_task.return_value = Mock(
@@ -162,7 +164,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_init_task_wrong_status(self, mock_client):
         # given
-        task_id = self._create_task()
+        task_id = await self._create_task()
         # when
         await self.rtm.init_task(task_id)
         # Start task to change the status
@@ -175,7 +177,7 @@ class TestRequestedTaskManager:
     async def test_start_task(self, mock_client):
         with freeze_time() as freezer:
             # given
-            task_id = self._create_task()
+            task_id = await self._create_task()
             await self.rtm.init_task(task_id)
             # when
             self.rtm.start_task(task_id)
@@ -188,7 +190,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_error_creating(self, mock_client):
         # given
-        task_id = self._create_task()
+        task_id = await self._create_task()
         # when
         await self.rtm.init_task(task_id)
         self.rtm.error_creating(task_id)
@@ -199,7 +201,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_error_creating_wrong_status(self, mock_client):
         # given
-        task_id = self._create_task()
+        task_id = await self._create_task()
         # when
         await self.rtm.init_task(task_id)
         # Start task to change the status
@@ -208,8 +210,9 @@ class TestRequestedTaskManager:
         with pytest.raises(RuntimeError):
             self.rtm.error_creating(task_id)
 
-    def test_task_exists(self):
-        task_id = self._create_task()
+    @pytest.mark.asyncio
+    async def test_task_exists(self):
+        task_id = await self._create_task()
         assert self.rtm.task_exists(task_id) is True
 
     def test_task_not_exists(self):
@@ -342,7 +345,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_task_timeout(self, mock_client):
         task_timeout = 0.1
-        task_id = self._create_task(task_timeout=task_timeout)
+        task_id = await self._create_task(task_timeout=task_timeout)
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
         assert not self.rtm.is_task_finished(task_id)
@@ -402,7 +405,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_get_started_tasks(self, mock_client):
         # given
-        task_id = self._create_task()
+        task_id = await self._create_task()
         await self.rtm.init_task(task_id)
         # when
         results = self.rtm.get_started_tasks()
@@ -429,7 +432,7 @@ class TestRequestedTaskManager:
 
     @pytest.mark.asyncio
     async def test_restart_task_after_timeout(self, mock_client, monkeypatch):
-        task_timeout = 0.1
+        task_timeout = 1
         task_id = await self._start_task(task_timeout=task_timeout)
 
         # Wait for the task to timeout
@@ -507,7 +510,7 @@ class TestRequestedTaskManager:
             assert row.status == SubtaskStatus.cancelled
 
     async def _start_task(self, **golem_params):
-        task_id = self._create_task(**golem_params)
+        task_id = await self._create_task(**golem_params)
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
         return task_id
@@ -515,7 +518,7 @@ class TestRequestedTaskManager:
     @pytest.mark.asyncio
     async def test_stop(self, mock_client):
         # given
-        task_id = self._create_task()
+        task_id = await self._create_task()
         await self.rtm.init_task(task_id)
 
         # when
@@ -543,10 +546,10 @@ class TestRequestedTaskManager:
             concent_enabled=False,
         )
 
-    def _create_task(self, **golem_params):
+    async def _create_task(self, **golem_params):
         golem_params = self._build_golem_params(**golem_params)
         app_params = {}
-        task_id = self.rtm.create_task(golem_params, app_params)
+        task_id = await self.rtm.create_task(golem_params, app_params)
         return task_id
 
     @staticmethod

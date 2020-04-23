@@ -61,12 +61,14 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'golem.tools.customloggers.SwitchedSentryHandler',
             'dsn': 'https://cdf4218c9dd24aa6adeb76ad0c990c9b:e6922bfaff9f49ccaa22ae4e406354aa@talkback.golem.network/2',  # noqa pylint: disable=line-too-long
+            'ignore_exceptions': ['SystemExit', 'Exit'],
         },
         'sentry-metrics': {
             'level': 'DEBUG',
             'class': 'golem.tools.customloggers.SwitchedSentryHandler',
             'filters': ['sentry-metrics'],
-            'dsn': 'https://d0e50b89f1ef4794a4b7f82b06fbe1e7:1043fecec0db4b818ccf76eb03003d03@talkback.golem.network/5'  # noqa pylint: disable=line-too-long
+            'dsn': 'https://d0e50b89f1ef4794a4b7f82b06fbe1e7:1043fecec0db4b818ccf76eb03003d03@talkback.golem.network/5',  # noqa pylint: disable=line-too-long
+            'ignore_exceptions': ['SystemExit', 'Exit'],
         },
     },
     'root': {
@@ -91,12 +93,25 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'transitions': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
         'twisted': {
             'level': 'WARNING',
             'propagate': True,
         },
         'golem.network': {'propagate': True},
+        'golem.network.concent.received_handler': {'propagate': True},
         'golem.network.transport': {'propagate': True},
+        'golem.network.transport.session': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
+        'golem.network.transport.tcpserver': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
         'apps': {
             'level': 'DEBUG',
             'propagate': True,

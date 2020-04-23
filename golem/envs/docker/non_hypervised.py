@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
-from golem.docker.hypervisor.dummy import DummyHypervisor
+from golem.core.common import is_windows
+from golem.docker.hypervisor.dummy import DummyHypervisor, DummyHyperVHypervisor
 from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.envs.docker.gpu import DockerGPUEnvironment, DockerGPUConfig
 
@@ -14,6 +15,8 @@ class NonHypervisedDockerCPUEnvironment(DockerCPUEnvironment):
 
     @classmethod
     def _get_hypervisor_class(cls):
+        if is_windows():
+            return DummyHyperVHypervisor
         return DummyHypervisor
 
 
@@ -31,7 +34,8 @@ class NonHypervisedDockerGPUEnvironment(DockerGPUEnvironment):
     @classmethod
     def default(
             cls,
-            config_dict: Dict[str, Any]
+            config_dict: Dict[str, Any],
+            dev_mode: bool,
     ) -> 'NonHypervisedDockerGPUEnvironment':
         from golem.envs.docker.vendor import nvidia
         config_dict = dict(config_dict)
@@ -39,4 +43,4 @@ class NonHypervisedDockerGPUEnvironment(DockerGPUEnvironment):
         docker_config = DockerGPUConfig.from_dict(config_dict)
         # Make linters know that docker_config is an instance of DockerGPUConfig
         assert isinstance(docker_config, DockerGPUConfig)
-        return cls(docker_config)
+        return cls(docker_config, dev_mode)

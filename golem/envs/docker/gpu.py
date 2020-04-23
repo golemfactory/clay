@@ -7,8 +7,6 @@ from golem_task_api.envs import DOCKER_GPU_ENV_ID
 
 from golem.core.common import update_dict
 from golem.envs import (
-    CounterId,
-    CounterUsage,
     EnvMetadata,
     EnvSupportStatus
 )
@@ -87,21 +85,21 @@ class DockerNvidiaGPUConfig(DockerGPUConfig):
 
 class DockerGPURuntime(DockerCPURuntime):
 
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        raise NotImplementedError
+    pass
 
 
 class DockerGPUEnvironment(DockerCPUEnvironment):
 
-    BENCHMARK_IMAGE = 'golemfactory/gpu_benchmark:1.0'
+    BENCHMARK_IMAGE = 'golemfactoryapps/gpu_benchmark:1.0'
 
     # Enforce DockerGPUConfig config class type (DockerCPUConfig in super)
     def __init__(  # pylint: disable=useless-super-delegation
             self,
             config: DockerGPUConfig,
+            dev_mode: bool,
             env_logger: Optional[Logger] = None,
     ) -> None:
-        super().__init__(config, env_logger or logger)
+        super().__init__(config, dev_mode, env_logger or logger)
 
     @classmethod
     def supported(cls) -> EnvSupportStatus:

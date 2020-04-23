@@ -5,7 +5,7 @@ import uuid
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 from typing import Optional, Dict
-from unittest import mock, TestCase
+from unittest import mock, TestCase, skipIf
 
 from golem.core.common import is_osx, is_windows
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
@@ -182,7 +182,8 @@ class TestDockerMachineHypervisor(LogTestCase):
         }
         hypervisor = MockHypervisor()
         vm_ip = '192.168.64.151'
-        with mock.patch.object(hypervisor, 'command', return_value=vm_ip):
+        cmd_out = vm_ip + '\n'
+        with mock.patch.object(hypervisor, 'command', return_value=cmd_out):
             host, port = hypervisor.get_port_mapping('container_id', 12345)
         self.assertEqual(host, vm_ip)
         self.assertEqual(port, 54321)
@@ -481,11 +482,11 @@ class TestDockerForMacHypervisor(TempDirFixture):
         self.assertEqual(port, 54321)
 
 
+@skipIf(is_windows(), 'Linux & macOS only')
 class TestDummyHypervisor(TestCase):
 
-    @mock.patch('golem.docker.hypervisor.dummy.DockerMachineCommandHandler')
     @mock.patch('golem.docker.hypervisor.dummy.local_client')
-    def test_get_port_mapping(self, local_client, command_handler):
+    def test_get_port_mapping(self, local_client):
         container_ip = '172.17.0.2'
         local_client().inspect_container.return_value = {
             'NetworkSettings': {
@@ -501,8 +502,6 @@ class TestDummyHypervisor(TestCase):
                 }
             }
         }
-        vm_ip = '10.0.0.3'
-        command_handler.run.return_value = vm_ip
 
         hypervisor = DummyHypervisor(mock.Mock())
         host, port = hypervisor.get_port_mapping('container_id', 12345)
@@ -510,8 +509,5 @@ class TestDummyHypervisor(TestCase):
         self.assertEqual(port, 12345)
         if is_osx():
             self.assertEqual(host, '127.0.0.1')
-        elif is_windows():
-            self.assertEqual(host, vm_ip)
-            command_handler.run.assert_called_once_with('ip', VM_NAME)
         else:
             self.assertEqual(host, container_ip)

@@ -220,9 +220,9 @@ class TestCompute(NewTaskComputerTestBase):
         self._assign_task(subtask_deadline=time.time())
         self.compute_future = asyncio.sleep(10)
 
-        result = yield self.task_computer.compute()
+        with self.assertRaisesRegex(RuntimeError, "Task computation timed out"):
+            yield self.task_computer.compute()
 
-        self.assertIsNone(result)
         self.logger.error.assert_called_once()
         self.stats_keeper.increase_stat.assert_called_once_with(
             'tasks_with_timeout')

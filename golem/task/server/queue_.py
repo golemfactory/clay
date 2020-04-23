@@ -11,6 +11,7 @@ from golem.network.transport import tcpserver
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
+    from golem.network.transport import tcpnetwork
     from golem.task import taskkeeper
     from golem.task.tasksession import TaskSession
 
@@ -110,10 +111,13 @@ class TaskMessagesQueueMixin:
 
     def msg_queue_connection_established(
             self,
-            session: 'TaskSession',
+            protocol: 'tcpnetwork.SafeProtocol',
             conn_id,
             node_id,
     ):
+        session = protocol.session
+        if typing.TYPE_CHECKING:
+            assert isinstance(session, TaskSession)
         try:
             if self.sessions[node_id] is not None:
                 # There is a session already established

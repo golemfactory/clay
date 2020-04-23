@@ -186,6 +186,22 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
         self.finished_callback.assert_called_once_with()
 
     @defer.inlineCallbacks
+    def test_cancelled(self):
+        yield self.adapter._handle_computation_results(
+            task_id='test_task',
+            subtask_id='test_subtask',
+            computation=defer.succeed(None)
+        )
+        self.task_server.send_task_failed.assert_called_once_with(
+            task_id='test_task',
+            subtask_id='test_subtask',
+            err_msg='Subtask cancelled',
+            decrease_trust=False
+        )
+        self.task_server.send_results.assert_not_called()
+        self.finished_callback.assert_called_once_with()
+
+    @defer.inlineCallbacks
     def test_error(self):
         error = RuntimeError('test_error')
         yield self.adapter._handle_computation_results(
@@ -218,10 +234,20 @@ class TestCheckTimeout(TaskComputerAdapterTestBase):
 class TestGetProgress(TaskComputerAdapterTestBase):
 
     def test_no_assigned_task(self):
+        self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = False
         self.assertIsNone(self.adapter.get_progress())
 
+    def test_assigned_new_task(self):
+        self.new_computer.has_assigned_task.return_value = True
+        self.old_computer.has_assigned_task.return_value = False
+        self.assertIs(
+            self.adapter.get_progress(),
+            self.new_computer.get_progress()
+        )
+
     def test_assigned_old_task(self):
+        self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = True
         self.assertIs(
             self.adapter.get_progress(),
@@ -276,34 +302,32 @@ class TestLockConfig(TaskComputerAdapterTestBase):
 
 class TestChangeConfig(TaskComputerAdapterTestBase):
 
-    @defer.inlineCallbacks
     def _test_compute_tasks(self, accept_tasks, in_shutdown, expected):
         self.task_server.get_task_computer_root.return_value = '/test'
         config_desc = ClientConfigDescriptor()
         config_desc.accept_tasks = accept_tasks
         config_desc.in_shutdown = in_shutdown
 
-        yield self.adapter.change_config(config_desc)
+        self.adapter._task_server.config_desc = config_desc
         self.assertEqual(self.adapter.compute_tasks, expected)
 
-    @defer.inlineCallbacks
     def test_compute_tasks_setting(self):
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=1,
             in_shutdown=1,
             expected=False
         )
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=1,
             in_shutdown=0,
             expected=True
         )
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=0,
             in_shutdown=1,
             expected=False
         )
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=0,
             in_shutdown=0,
             expected=False

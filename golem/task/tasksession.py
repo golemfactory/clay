@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator, Type
+    Optional, Generator
 )
 
 from ethereum.utils import denoms
@@ -43,7 +43,6 @@ from golem.task.helpers import calculate_subtask_payment
 from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
@@ -254,9 +253,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def read_msg_queue(self):
         if not self.key_id:
+            logger.debug('skipping queue, no key_id')
             return
         if not self.verified:
+            logger.debug('skipping queue, not verified. key_id=%r', self.key_id)
             return
+        logger.debug('sending messages for key. %r', self.key_id)
         for msg in msg_queue.get(self.key_id):
             self.send(msg)
 
@@ -307,6 +309,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.task_server.should_accept_provider(
                 self.key_id, self.address, msg.task_id, msg.perf_index,
                 msg.max_memory_size, offer_hash):
+            logger.debug(
+                "should_accept_provider False. provider=%s, task_id=%s",
+                self.key_id, msg.task_id
+            )
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
@@ -425,6 +431,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         for _i in range(msg.num_subtasks):
             ctd_res = yield self._get_next_ctd(msg)
             if ctd_res is None:
+                logger.debug("_get_next_ctd None. %s", task_id)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
                 return
             ctd, package_hash, package_size = ctd_res
@@ -596,6 +603,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         def _cannot_compute(reason):
+            assert isinstance(reason, message.tasks.CannotComputeTask.REASON)
             logger.info(
                 "Cannot compute subtask. subtask_id: %r, reason: %r",
                 ctd["subtask_id"],
@@ -614,6 +622,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
+            self.task_server.requested_tasks.discard(ctd["task_id"])
             return
 
         if (
@@ -695,9 +704,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(e.reason)
             return
 
-        self.task_manager.comp_task_keeper.receive_subtask(msg)
         if not self.task_server.task_given(msg):
-            _cannot_compute(None)
+            _cannot_compute(reasons.CannotTakeWork)
             return
 
     # pylint: enable=too-many-return-statements, too-many-branches
@@ -711,6 +719,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
+    @defer.inlineCallbacks
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
@@ -722,14 +731,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.reason,
         )
 
-        config = self.task_server.config_desc
-        timeout = config.computation_cancellation_timeout
-
-        self.task_manager.task_computation_cancelled(
-            msg.subtask_id,
-            msg.reason,
-            timeout,
-        )
+        if self.requested_task_manager.subtask_exists(msg.subtask_id):
+            yield deferred_from_future(
+                self.requested_task_manager.abort_subtask(msg.subtask_id)
+            )
+        else:
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+            self.task_manager.task_computation_cancelled(
+                msg.subtask_id,
+                msg.reason,
+                timeout,
+            )
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):

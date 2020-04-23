@@ -48,7 +48,7 @@ def catch_and_print_exceptions(f):
     return wrapper
 
 
-class NodeTestPlaybook:
+class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, too-many-public-methods
     INTERVAL = 1
     RECONNECT_COUNTDOWN_INITIAL = 10
     RPC_TASK_CREATE = 'comp.task.create'
@@ -84,6 +84,7 @@ class NodeTestPlaybook:
         self.nodes_ports: typing.Dict[NodeId, int] = {}
         self.nodes_keys: bidict[NodeId, str] = bidict()
         self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
+        self.nodes_addresses: typing.Dict[NodeId, str] = {}
 
         self._loop = task.LoopingCall(self.run)
         self.start_time: float = 0
@@ -128,7 +129,7 @@ class NodeTestPlaybook:
         if isinstance(step, partial):
             kwargs = ", ".join(f"{k}={v}" for k, v in step.keywords.items())
             return step.func.__name__ + '(' + kwargs + ')'
-        return step.__name__
+        return step.__name__  # pylint: disable=no-member
 
     @property
     def time_elapsed(self) -> float:
@@ -176,8 +177,12 @@ class NodeTestPlaybook:
             self.next()
 
         else:
-            print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
-                node_id.value, gnt_balance, gntb_balance, eth_balance))
+            print(
+                f"Waiting for {node_id.value}"
+                " GNT(B)/converted GNTB/ETH"
+                f" ({gnt_balance}/{gntb_balance}/{eth_balance})"
+                f" addr: {self.nodes_addresses.get(node_id)}"
+            )
             self.has_requested_eth = True
             time.sleep(15)
 
@@ -199,11 +204,27 @@ class NodeTestPlaybook:
         return self.call(node_id, 'net.ident.key',
                          on_success=on_success, on_error=on_error)
 
+    def step_get_address(self, node_id: NodeId):
+        def on_success(result):
+            print(f"{node_id.value} address: {result}")
+            self.nodes_addresses[node_id] = result
+            self.next()
+
+        def on_error(_):
+            print(f"Waiting for the {node_id.value} address...")
+            time.sleep(1)
+
+        return self.call(
+            node_id, 'pay.ident',
+            on_success=on_success,
+            on_error=on_error,
+        )
+
     def step_configure(self, node_id: NodeId):
         opts = self.config.current_nodes[node_id].opts
         if not opts:
             self.next()
-            return
+            return None
 
         def on_success(_):
             print(f"Configured {node_id.value}")
@@ -283,9 +304,36 @@ class NodeTestPlaybook:
 
         return self.call(node_id, 'comp.tasks', on_success=on_success)
 
-    def step_create_task(self, node_id: NodeId = NodeId.requestor):
+    def step_enable_app(self, node_id: NodeId = NodeId.requestor):
+        app_id = self.config.task_dict.get('golem', {}).get('app_id')
+        if not app_id:
+            print('not task api, no need to enable app')
+            self.next()
+            return
+
+        def on_success(result):
+            print(f'finished enabling app. result={result}, app_id={app_id}')
+            self.next()
+
+        print(f'enabling app. app_id={app_id}')
+        return self.call(
+            node_id,
+            'apps.update',
+            app_id,
+            True,
+            on_success=on_success
+        )
+
+    def step_create_task(
+            self,
+            node_id: NodeId = NodeId.requestor,
+            task_dict: typing.Optional[dict] = None,
+    ):
+        if not task_dict:
+            task_dict = self.config.task_dict
+
         print("Output path: {}".format(self.output_path))
-        print("Task dict: {}".format(self.config.task_dict))
+        print("Task dict: {}".format(task_dict))
 
         def on_success(result):
             if result[0]:
@@ -307,21 +355,34 @@ class NodeTestPlaybook:
             return self.call(
                 node_id,
                 self.RPC_TASK_CREATE,
-                self.config.task_dict,
+                task_dict,
                 on_success=on_success
             )
+
+    @staticmethod
+    def _identify_new_task_id(
+            tasks: set,
+            known_tasks: set
+    ) -> typing.Optional[str]:
+        new_tasks = tasks - known_tasks
+        if len(new_tasks) != 1:
+            print("Cannot find the new task ({})".format(new_tasks))
+            time.sleep(3)
+            return None
+        else:
+            task_id = list(new_tasks)[0]
+            print("Task id: {}".format(task_id))
+            return task_id
 
     def step_get_task_id(self, node_id: NodeId = NodeId.requestor):
 
         def on_success(result):
-            tasks = set(map(lambda r: r['id'], result))
-            new_tasks = tasks - self.known_tasks
-            if len(new_tasks) != 1:
-                print("Cannot find the new task ({})".format(new_tasks))
-                time.sleep(3)
-            else:
-                self.task_id = list(new_tasks)[0]
-                print("Task id: {}".format(self.task_id))
+            task_id = self._identify_new_task_id(
+                set(map(lambda r: r['id'], result)),
+                self.known_tasks
+            )
+            if task_id:
+                self.task_id = task_id
                 self.next()
 
         return self.call(node_id, 'comp.tasks', on_success=on_success)
@@ -334,7 +395,11 @@ class NodeTestPlaybook:
         return self.call(node_id, 'comp.task', self.task_id,
                          on_success=on_success)
 
-    def step_wait_task_finished(self, node_id: NodeId = NodeId.requestor):
+    def step_wait_task_finished(
+            self,
+            node_id: NodeId = NodeId.requestor,
+            task_id: typing.Optional[str] = None,
+    ):
         def on_success(result):
             if result['status'] == 'Finished':
                 print("Task finished.")
@@ -345,8 +410,12 @@ class NodeTestPlaybook:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
 
-        return self.call(node_id, 'comp.task', self.task_id,
-                         on_success=on_success)
+        return self.call(
+            node_id,
+            'comp.task',
+            task_id or self.task_id,
+            on_success=on_success
+        )
 
     def step_verify_output(self):
         settings = self.task_settings_dict
@@ -513,7 +582,9 @@ class NodeTestPlaybook:
 
     initial_steps: typing.Tuple = (
         partial(step_get_key, node_id=NodeId.provider),
+        partial(step_get_address, node_id=NodeId.provider),
         partial(step_get_key, node_id=NodeId.requestor),
+        partial(step_get_address, node_id=NodeId.requestor),
         partial(step_configure, node_id=NodeId.provider),
         partial(step_configure, node_id=NodeId.requestor),
         partial(step_get_network_info, node_id=NodeId.provider),
@@ -527,6 +598,7 @@ class NodeTestPlaybook:
     )
 
     steps: typing.Tuple = initial_steps + (
+        step_enable_app,
         step_create_task,
         step_get_task_id,
         step_get_task_status,
@@ -537,16 +609,26 @@ class NodeTestPlaybook:
     )
 
     @staticmethod
-    def _call_rpc(method, *args, port, datadir, on_success, on_error, **kwargs):
+    def _call_rpc(
+            method,
+            *args,
+            port,
+            datadir,
+            mainnet,
+            on_success,
+            on_error,
+            **kwargs,
+    ):
         try:
             client = RPCClient(
                 host='localhost',
                 port=port,
                 datadir=datadir,
+                mainnet=mainnet,
             )
         except CertificateError as e:
             on_error(e)
-            return
+            return None
 
         return client.call(method, *args,
                            on_success=on_success,
@@ -562,6 +644,7 @@ class NodeTestPlaybook:
             method,
             port=node_config.rpc_port,
             datadir=node_config.datadir,
+            mainnet=node_config.mainnet,
             *args,
             on_success=catch_and_print_exceptions(on_success),
             on_error=catch_and_print_exceptions(on_error),

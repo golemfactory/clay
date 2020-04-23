@@ -75,7 +75,7 @@ class VerificationMixin:
                 # Experimental feature. Try to spread subtasks fairly amongst
                 # providers.
                 self.disallow_node(
-                    node_id=task_to_compute.provider_id,
+                    node_id=node.key,
                     timeout_seconds=config_desc.disallow_node_timeout_seconds,
                     persist=False,
                 )
@@ -83,7 +83,7 @@ class VerificationMixin:
                 # Experimental feature. Try to spread subtasks fairly amongst
                 # providers.
                 self.disallow_ip(
-                    ip=self.address,
+                    ip=node.pub_addr,
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 

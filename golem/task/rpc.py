@@ -405,8 +405,6 @@ def enqueue_new_task(client, task, force=False) \
             task=task,
             resource_server_result=resource_server_result,
         )
-
-        logger.info("Task started. task_id=%r", task_id)
     except eth_exceptions.EthereumError as e:
         logger.error(
             "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
@@ -423,9 +421,18 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
-        -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
+def _create_task_error(
+        e: Exception,
+        self: 'ClientProvider',
+        task_dict: dict,
+        *_args,
+        **kwargs
+) -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
+    logger.error("Cannot create task %r: %s", task_dict, e)
+
+    task_id = kwargs.get('task_id')
+    if task_id:
+        self.task_manager.task_creation_failed(task_id, str(e))
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -433,9 +440,20 @@ def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
-        -> typing.Tuple[None, str]:
+def _restart_task_error(
+        e: Exception,
+        self: 'ClientProvider',
+        task_id: str,
+        *_args, **kwargs
+) -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
+    try:
+        new_task = kwargs['new_task']
+        self.task_manager.put_task_in_failed_state(new_task.task_id)
+    except KeyError:
+        logger.debug('No new task given')
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Can't put task in failed state. task_id=%r", task_id)
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -484,15 +502,12 @@ class ClientProvider:
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
-    @safe_run(_create_task_error)
+    @defer.inlineCallbacks
     def create_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> typing.Tuple[
-        typing.Optional[TaskId],
-        typing.Optional[typing.Union[str, typing.Dict]]
-    ]:
+    ):
         """
         :param task_dict: task definition dictionary
         :param force: if True will ignore warnings
@@ -501,16 +516,22 @@ class ClientProvider:
         """
 
         if 'golem' in task_dict and 'app' in task_dict:
-            return self._create_task_api_task(
-                task_dict['golem'],
-                task_dict['app']), None
-        return self._create_legacy_task(task_dict, force), None
+            try:
+                task_id = yield self._create_task_api_task(
+                    task_dict['golem'],
+                    task_dict['app'])
+                return task_id, None
+            except Exception as exc:  # pylint: disable=broad-except
+                return None, str(exc)
+        return self._create_legacy_task(task_dict, force)
 
+    @safe_run(_create_task_error)
     def _create_legacy_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> TaskId:
+    ) -> typing.Tuple[typing.Optional[TaskId],
+                      typing.Optional[typing.Union[str, typing.Dict]]]:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
@@ -524,28 +545,22 @@ class ClientProvider:
                 task.header.concent_enabled,
                 force
             )
-        except Exception as exc:  # pylint: disable=broad-except
-            self.task_manager.task_creation_failed(task_id, str(exc))
-            raise
+        except eth_exceptions.NotEnoughFunds as e:
+            return _create_task_error(e, self, task_dict, task_id=task_id)
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
         deferred.addErrback(
-            lambda failure: _create_task_error(
-                e=failure.value,
-                _self=self,
-                task_dict=task_dict,
-                force=force
-            )
-        )
+            lambda failure: self.client.task_manager.task_creation_failed(
+                task_id, str(failure.value)))
+        return task_id, None
 
-        return task_id
-
+    @defer.inlineCallbacks
     def _create_task_api_task(
             self,
             golem_params: dict,
             app_params: dict,
-    ) -> TaskId:
+    ):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
         if self.client.has_assigned_task():
@@ -570,10 +585,10 @@ class ClientProvider:
             False,
         )
 
-        task_id = self.requested_task_manager.create_task(
+        future = self.requested_task_manager.create_task(
             create_task_params,
-            app_params,
-        )
+            app_params)
+        task_id = yield deferred_from_future(future)
 
         self.client.funds_locker.lock_funds(
             task_id,
@@ -581,7 +596,7 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
-        self.client.update_setting('accept_tasks', False)
+        self.client.update_setting('accept_tasks', False, False)
 
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
@@ -597,7 +612,7 @@ class ClientProvider:
                 self.requested_task_manager.init_task(task_id))
         except Exception:
             self.client.funds_locker.remove_task(task_id)
-            self.client.update_setting('accept_tasks', True)
+            self.client.update_setting('accept_tasks', True, False)
             self.requested_task_manager.error_creating(task_id)
             raise
         else:
@@ -688,8 +703,13 @@ class ClientProvider:
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
         """
-        logger.info('Restarting task. task_id=%r', task_id)
-        logger.debug('force=%r, disable_concent=%r', force, disable_concent)
+        logger.info('Attempting to restart task. task_id=%r', task_id)
+        logger.debug(
+            'restart_task. task_id=%r, force=%r, disable_concent=%r',
+            task_id,
+            force,
+            disable_concent
+        )
         assert self.client.task_server
 
         rtm = self.client.task_server.requested_task_manager
@@ -767,14 +787,20 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
+        # Drop the final path component to keep a common parent for generated
+        # output directories
+        output_path = task_dict['options']['output_path']
+        task_dict['options']['output_path'] = str(Path(output_path).parent)
+
         new_task = _create_task(self.client, task_dict)
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=new_task, force=force)
         deferred.addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
-                _self=self,
+                self=self,
                 task_id=task_id,
+                new_task=new_task,
             )
         )
         self.task_manager.put_task_in_restarted_state(task_id)
@@ -974,6 +1000,11 @@ class ClientProvider:
         del task_dict['id']
         if disable_concent:
             task_dict['concent_enabled'] = False
+
+        # Drop the final path component to keep a common parent for generated
+        # output directories
+        output_path = task_dict['options']['output_path']
+        task_dict['options']['output_path'] = str(Path(output_path).parent)
 
         logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
         _restart_subtasks(

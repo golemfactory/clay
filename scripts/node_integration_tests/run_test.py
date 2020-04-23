@@ -2,18 +2,18 @@
 import argparse
 from typing import TYPE_CHECKING
 
-from golem.config.environments import set_environment
+from golem.core import variables
 
 from scripts.node_integration_tests.playbook_loader import \
     get_config_and_playbook_class
 from scripts.node_integration_tests.playbooks import run_playbook
 from scripts.node_integration_tests.playbooks.test_config_base import (
     NodeId,
-    CONCENT_DISABLED,
 )
 
 
 if TYPE_CHECKING:
+    # pylint: disable=unused-import
     from scripts.node_integration_tests.playbooks.test_config_base \
         import TestConfigBase
 
@@ -40,7 +40,7 @@ class DictAction(argparse.Action):
     """
 
     def __call__(self, parser, namespace, values, option_string=None) -> None:
-        assert(self.nargs == 2)
+        assert self.nargs == 2
         dest = getattr(namespace, self.dest)
         if dest is None:
             setattr(namespace, self.dest, {values[0]: values[1]})
@@ -87,6 +87,11 @@ def parse_args() -> argparse.Namespace:
         help="use the mainnet environment to run the test "
              "(the playbook must also use mainnet)",
     )
+    parser.add_argument(
+        '--concent',
+        choices=variables.CONCENT_CHOICES,
+        help="choose concent option",
+    )
     return parser.parse_args()
 
 
@@ -102,6 +107,15 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
                 'dump_output_on_crash',
         ]:
             setattr(config, k, v)
+        elif k in [
+                'concent',
+                'mainnet',
+        ]:
+            for node_configs in config.nodes.values():
+                if not isinstance(node_configs, list):
+                    node_configs = [node_configs]
+                for node_config in node_configs:
+                    setattr(node_config, k, v)
         elif k == 'datadir':
             for node_name, datadir in v.items():
                 node_id = NodeId(node_name)
@@ -120,11 +134,8 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
 
 def main():
     args = parse_args()
-
     config, playbook_class = get_config_and_playbook_class(args.test_path)
-
     override_config(config, args)
-
     run_playbook(playbook_class, config)
 
 

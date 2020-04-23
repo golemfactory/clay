@@ -1,6 +1,7 @@
 from typing import (
     Any,
     Dict,
+    List,
     Optional,
     Tuple
 )
@@ -8,8 +9,6 @@ from typing import (
 from twisted.internet.defer import Deferred
 
 from golem.envs import (
-    CounterId,
-    CounterUsage,
     EnvConfig,
     EnvEventListener,
     EnvEventType,
@@ -24,7 +23,9 @@ from golem.envs import (
     RuntimeInput,
     RuntimeOutput,
     RuntimePayload,
-    RuntimeStatus
+    RuntimeStatus,
+    UsageCounter,
+    UsageCounterValues
 )
 
 
@@ -68,8 +69,8 @@ class RuntimeWrapper(Runtime):
     def get_port_mapping(self, port: int) -> Tuple[str, int]:
         return self._runtime.get_port_mapping(port)
 
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        return self._runtime.usage_counters()
+    def usage_counter_values(self) -> UsageCounterValues:
+        return self._runtime.usage_counter_values()
 
     def listen(
             self,
@@ -124,6 +125,9 @@ class EnvironmentWrapper(Environment):
             listener: EnvEventListener
     ) -> None:
         self._env.listen(event_type, listener)
+
+    def supported_usage_counters(self) -> List[UsageCounter]:
+        return self._env.supported_usage_counters()
 
     def runtime(
             self,

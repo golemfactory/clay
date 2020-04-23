@@ -167,13 +167,13 @@ _TASK_SETTINGS = {
     },
     'task_api_blender': {
         'golem': {
-            'app_id': BlenderAppDefinition.id,
+            'app_id': '6b39331ac73484ff596447cefdfba9e5',
             'name': '',
             'resources': [],
             'max_price_per_hour': str(10 ** 18),
             'max_subtasks': 1,
-            'task_timeout': 600000,  # 00:10:00
-            'subtask_timeout': 590000,  # 00:09:50
+            'task_timeout': 600,  # 00:10:00
+            'subtask_timeout': 590,  # 00:09:50
         },
         'app': {
             'resources': [],

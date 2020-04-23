@@ -1,5 +1,5 @@
-from abc import ABC, abstractclassmethod, abstractmethod
-from typing import Optional, List
+from abc import ABC, abstractmethod
+from typing import List
 
 from dataclasses import dataclass
 
@@ -43,7 +43,7 @@ class RequestorMarketStrategy(ABC):
 
     @classmethod
     @abstractmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    def resolve_task_offers(cls, task_id: str) -> List[Offer]:
         """
         Arguments:
             task_id {str} -- task_id

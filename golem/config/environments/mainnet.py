@@ -3,9 +3,10 @@ from typing import List
 
 from golem_sci import contracts
 from golem_sci.chains import MAINNET
+from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
-from golem.core.variables import PROTOCOL_CONST, CONCENT_CHOICES
-from . import CONCENT_ENVIRONMENT_VARIABLE
+from golem.core.variables import PROTOCOL_CONST
+from . import CONCENT_ENVIRONMENT_VARIABLE, init_concent_config
 
 
 # CORE
@@ -47,14 +48,14 @@ class EthereumConfig:
             CONCENT_ENVIRONMENT_VARIABLE, 'main'
         )
 
-        self.CONCENT_VARIANT = CONCENT_CHOICES[
-            os.environ.get(CONCENT_ENVIRONMENT_VARIABLE, 'disabled')
-        ]
+        init_concent_config(self)
 
         self.WITHDRAWALS_ENABLED = True
 
 
 # P2P
+
+BROADCAST_PUBKEY = b'\xab\xab;\xb0\x89\x10\r\xf8Hs\xd7\x91\xcc\x13\xdb\x0b9tw\x80\xd4t?\xdc\x9dS.\x9at\xe3X\xbcBK\x1c\xef\xdb3\xab}z\xad\xde"ZW\xa9T\xdeN\xb6\xc7P\x0e\xa9\x7fv\x1a\xec\xcbN\x07R\x10'  # noqa pylint: disable=line-too-long
 
 P2P_SEEDS = [
     ('seeds.golem.network', 40102),
@@ -81,4 +82,6 @@ CONCENT_SUPPORTED_APPS = (
     'blender_nvgpu'
 )
 
-TASK_API_ENVS: List[str] = []
+TASK_API_ENVS: List[str] = [
+    DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
+]

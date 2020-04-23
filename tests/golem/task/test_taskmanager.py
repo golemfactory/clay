@@ -7,7 +7,7 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 
@@ -415,6 +415,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 self.restarted = {k: False for k in subtasks_id}
                 self.verify_subtasks = verify_subtasks
                 self.subtasks_id = subtasks_id
+                self.num_tasks_received = 0
 
             def query_extra_data(self, perf_index, node_id=None,
                                  node_name=None):
@@ -453,7 +454,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def verify_task(self):
                 return self.finished_computation()
 
-            def restart_subtask(self, subtask_id):
+            def restart_subtask(
+                    self,
+                    subtask_id,
+                    new_state: Optional[SubtaskStatus] = None
+            ):
                 self.restarted[subtask_id] = True
 
             def should_accept_client(self, node_id, offer_hash):
@@ -461,6 +466,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
             def accept_client(self, node_id, offer_hash, num_subtasks=1):
                 return AcceptClientVerdict.ACCEPTED
+
+            def get_progress(self):
+                if self.get_total_tasks() == 0:
+                    return 0.0
+                return self.num_tasks_received / self.get_total_tasks()
 
         t = TestTask(th, ["xxyyzz"],
                      verify_subtasks={"xxyyzz": True})
@@ -744,12 +754,34 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         )
         task_mock.restart_subtask.assert_called_once_with(
             subtask_id,
+            new_state=SubtaskStatus.cancelled,
         )
         task_mock.computation_failed.assert_not_called()
         self.assertIs(
-            self.tm.tasks_states[task_mock.header.task_id]\
+            self.tm.tasks_states[task_mock.header.task_id]
                 .subtask_states[subtask_id].status,
             SubtaskStatus.cancelled,
+        )
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    @patch('golem.task.taskmanager.TaskManager.task_computation_failure')
+    def test_task_computation_cancelled_unknown_reason(self, failure_mock, *_):
+        reason = None
+        subtask_id = "aabbcc"
+        task_mock = self._get_task_mock()
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = subtask_id
+        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, 'oh')
+        self.tm.task_computation_cancelled(
+            subtask_id,
+            reason,
+            timeout=1000,
+        )
+        failure_mock.assert_called_once_with(
+            subtask_id,
+            'Task computation rejected: unknown',
+            False,
         )
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
@@ -818,7 +850,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
             self.assertIs(
                 task_state.subtask_states["aabbcc"].status,
-                SubtaskStatus.failure,
+                SubtaskStatus.timeout,
             )
         # Task with task and subtask timeout
         with patch('golem.task.taskbase.Task.needs_computation',
@@ -848,7 +880,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
             self.assertIs(
                 task_state.subtask_states["qwerty"].status,
-                SubtaskStatus.failure,
+                SubtaskStatus.timeout,
             )
             checker([("qwe", "qwerty", SubtaskOp.TIMEOUT),
                      ("qwe", None, TaskOp.TIMEOUT)])
