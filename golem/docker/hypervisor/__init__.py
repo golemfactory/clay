@@ -3,13 +3,16 @@ import subprocess
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, TYPE_CHECKING
 
 from golem.docker.commands.docker import DockerCommandHandler
-from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
-    DOCKER_VM_STATUS_RUNNING
+from golem.docker.config import DOCKER_VM_NAME, DOCKER_VM_STATUS_RUNNING
 from golem.docker.task_thread import DockerBind
 from golem.report import Component, report_calls
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.docker.config import GetConfigFunction
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,7 @@ class Hypervisor(ABC):
 
     def __init__(
             self,
-            get_config_fn: GetConfigFunction,
+            get_config_fn: 'GetConfigFunction',
             vm_name: str = DOCKER_VM_NAME
     ) -> None:
 
@@ -47,7 +50,7 @@ class Hypervisor(ABC):
 
     @classmethod
     @report_calls(Component.hypervisor, 'instance.check')
-    def instance(cls, get_config_fn: GetConfigFunction,
+    def instance(cls, get_config_fn: 'GetConfigFunction',
                  docker_vm: str = DOCKER_VM_NAME) -> 'Hypervisor':
         if not cls._instance:
             cls._instance = cls._new_instance(get_config_fn, docker_vm)
@@ -56,7 +59,7 @@ class Hypervisor(ABC):
     @classmethod
     def _new_instance(
             cls,
-            get_config_fn: GetConfigFunction,
+            get_config_fn: 'GetConfigFunction',
             vm_name: str = DOCKER_VM_NAME) -> 'Hypervisor':
         return cls(get_config_fn, vm_name=vm_name)
 

@@ -539,7 +539,11 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(
             cpu_usage * NANOSECOND)
 
-    def restart_subtask(self, subtask_id: str):
+    def restart_subtask(
+            self,
+            subtask_id,
+            new_state: Optional[SubtaskStatus] = None,
+    ):
         for vbr_subtask in self.subtasks:
             try:
                 vbr_subtask.restart_subtask(subtask_id)

@@ -1,17 +1,21 @@
 import abc
 import asyncio
-from pathlib import Path
-from typing import Optional, Tuple, Type
+from typing import Optional, Tuple, Type, TYPE_CHECKING
 
 from golem_task_api import TaskApiService
 
-from golem.envs import (
-    Environment,
-    Prerequisites,
-    Runtime,
-    RuntimePayload,
-    RuntimeStatus,
-)
+from golem.envs import RuntimeStatus
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from pathlib import Path
+
+    from golem.envs import (
+        Environment,
+        Prerequisites,
+        Runtime,
+        RuntimePayload,
+    )
 
 
 class TaskApiPayloadBuilder(abc.ABC):
@@ -19,11 +23,11 @@ class TaskApiPayloadBuilder(abc.ABC):
     @abc.abstractmethod
     def create_payload(
             cls,
-            prereq: Prerequisites,
-            shared_dir: Path,
+            prereq: 'Prerequisites',
+            shared_dir: 'Path',
             command: str,
             port: int,
-    ) -> RuntimePayload:
+    ) -> 'RuntimePayload':
         raise NotImplementedError
 
 
@@ -31,16 +35,16 @@ class EnvironmentTaskApiService(TaskApiService):
 
     def __init__(
             self,
-            env: Environment,
-            prereq: Prerequisites,
-            shared_dir: Path,
+            env: 'Environment',
+            prereq: 'Prerequisites',
+            shared_dir: 'Path',
             payload_builder: Type[TaskApiPayloadBuilder],
     ) -> None:
         self._shared_dir = shared_dir
         self._prereq = prereq
         self._env = env
         self._payload_builder = payload_builder
-        self._runtime: Optional[Runtime] = None
+        self._runtime: 'Optional[Runtime]' = None
 
     async def start(self, command: str, port: int) -> Tuple[str, int]:
         runtime_payload = self._payload_builder.create_payload(
