@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
 from logging import Logger, getLogger
-from threading import RLock
+from threading import Lock, RLock
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set, Tuple, Type, TYPE_CHECKING
@@ -605,6 +605,15 @@ def delayed_config(cls: Type[Environment]) -> Type[Environment]:
     """
     This class decorator allows to save config update and apply it, when env is
     disabled.
+
+    Mutex prevents the following scenario
+    Thread 1                Thread 2
+    call apply_next_config
+                            call update_config
+                            status is disabled, so calls
+                                super().update_config
+    cls.update_config
+        with _next_config
     """
     # FIXME workaround https://github.com/python/mypy/issues/5865
     cls2: Any = cls
@@ -613,24 +622,27 @@ def delayed_config(cls: Type[Environment]) -> Type[Environment]:
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
             self._next_config: Optional[EnvConfig] = None
+            self._config_lock = Lock()
 
             def apply_next_config(_):
-                if self._next_config is None:
-                    return
-                self._logger.debug("Applying saved config")
-                config = self._next_config
-                self._next_config = None
-                cls.update_config(self, config)
+                with self._config_lock:
+                    if self._next_config is None:
+                        return
+                    self._logger.debug("Applying saved config")
+                    config = self._next_config
+                    self._next_config = None
+                    cls.update_config(self, config)
 
             self.listen(EnvEventType.DISABLED, apply_next_config)
 
         def update_config(self, new_config: EnvConfig) -> None:
-            if self._status == EnvStatus.DISABLED:
-                self._logger.debug("Config applied immediately")
-                super().update_config(new_config)
-                return
+            with self._config_lock:
+                if self._status == EnvStatus.DISABLED:
+                    self._logger.debug("Config applied immediately")
+                    super().update_config(new_config)
+                    return
 
-            self._logger.debug("Config saved for later")
-            self._next_config = new_config
+                self._logger.debug("Config saved for later")
+                self._next_config = new_config
 
     return DelayedConfigWrapper
