@@ -1,8 +1,6 @@
 import copy
 import typing
 
-from golem.apps.default import BlenderAppDefinition
-
 _TASK_SETTINGS = {
     'default': {
         'type': "Blender",
@@ -167,7 +165,7 @@ _TASK_SETTINGS = {
     },
     'task_api_blender': {
         'golem': {
-            'app_id': '6b39331ac73484ff596447cefdfba9e5',
+            'app_id': 'd31614541096ad3bd2b500aed90490a5',
             'name': '',
             'resources': [],
             'max_price_per_hour': str(10 ** 18),
