@@ -41,7 +41,8 @@ from golem.envs import (
     RuntimePayload,
     RuntimeStatus,
     UsageCounter,
-    UsageCounterValues
+    UsageCounterValues,
+    delayed_config,
 )
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
@@ -496,6 +497,7 @@ class DockerCPURuntime(RuntimeBase):
         return deepcopy(self._counters)
 
 
+@delayed_config
 class DockerCPUEnvironment(EnvironmentBase):
 
     MIN_MEMORY_MB: ClassVar[int] = 1024
