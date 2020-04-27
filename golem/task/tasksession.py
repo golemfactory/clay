@@ -495,12 +495,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.requested_task_manager.has_pending_subtasks(task_id))
             if not has_pending_subtasks:
                 return None
-
+            node_name = ''
+            node_info = nodeskeeper.get(self.key_id)
+            if node_info and node_info.node_name:
+                node_name = node_info.node_name
             subtask_definition = yield deferred.deferred_from_future(
                 self.requested_task_manager.get_next_subtask(
                     task_id=task_id,
                     computing_node=ComputingNodeDefinition(
-                        name='',  # FIXME: Provide proper node name
+                        name=node_name,
                         node_id=self.key_id
                     )
                 ))

@@ -96,6 +96,7 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
             shared_resources.append(return_value)
             return defer.succeed(return_value)
         self.resource_manager.share.side_effect = _share
+        tasksession.nodeskeeper.get = mock.Mock(return_value=None)
 
         yield self.ts._offer_chosen(True, self.wtct)
 
