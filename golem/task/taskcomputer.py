@@ -77,7 +77,7 @@ class TaskComputerAdapter:
         )
         self._new_computer = NewTaskComputer(
             env_manager=env_manager,
-            work_dir=task_server.get_task_computer_root(),
+            work_dir=Path(task_server.get_task_computer_root()),
             stats_keeper=self.stats
         )
 
@@ -263,10 +263,8 @@ class TaskComputerAdapter:
             config_desc: 'ClientConfigDescriptor',
             in_background: bool = True
     ) -> defer.Deferred:
-        work_dir = Path(self._task_server.get_task_computer_root())
-        yield self._new_computer.change_config(
-            config_desc=config_desc,
-            work_dir=work_dir)
+        self._new_computer.change_config(
+            config_desc=config_desc)
         return (yield self._old_computer.change_config(
             config_desc=config_desc,
             in_background=in_background))
@@ -480,13 +478,9 @@ class NewTaskComputer:
     def change_config(
             self,
             config_desc: 'ClientConfigDescriptor',
-            work_dir: Path
-    ) -> defer.Deferred:
-        assert not self._is_computing()
-        self._work_dir = work_dir
-
+    ) -> None:
         config_dict = dict(
-            work_dirs=[work_dir],
+            work_dirs=[self._work_dir],
             cpu_count=config_desc.num_cores,
             memory_mb=scale_memory(
                 config_desc.max_memory_size,
@@ -504,8 +498,6 @@ class NewTaskComputer:
             docker_gpu = self._env_manager.environment(DOCKER_GPU_ENV_ID)
             # TODO: GPU options in config_dict
             docker_gpu.update_config(DockerGPUConfig(**config_dict))
-
-        return defer.succeed(None)
 
     def quit(self):
         if self.has_assigned_task():

@@ -320,28 +320,17 @@ class TestCreateClientAndCompute(NewTaskComputerTestBase):
 
 class TestChangeConfig(NewTaskComputerTestBase):
 
-    @defer.inlineCallbacks
-    def test_computation_running(self):
-        self.task_computer._computation = mock.Mock()
-        work_dir = Path('test_dir')
-        config_desc = ClientConfigDescriptor()
-        with self.assertRaises(AssertionError):
-            yield self.task_computer.change_config(config_desc, work_dir)
-
-    @defer.inlineCallbacks
     def test_ok(self):
-        work_dir = Path('test_dir')
         config_desc = ClientConfigDescriptor()
         config_desc.num_cores = 13
         config_desc.max_memory_size = 1024 * 1024
 
-        yield self.task_computer.change_config(config_desc, work_dir)
+        self.task_computer.change_config(config_desc)
 
-        self.assertEqual(self.task_computer._work_dir, work_dir)
         self.env_manager.environment.assert_called_once_with(DOCKER_CPU_ENV_ID)
         self.env_manager.environment().update_config.assert_called_once_with(
             DockerCPUConfig(
-                work_dirs=[Path('test_dir')],
+                work_dirs=[self.work_dir],
                 cpu_count=13,
                 memory_mb=1024,
             )

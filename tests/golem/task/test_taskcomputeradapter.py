@@ -34,7 +34,8 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
         self.task_server = mock.Mock(
             spec=TaskServer,
             config_desc=config_desc,
-            task_keeper=self.task_keeper
+            task_keeper=self.task_keeper,
+            get_task_computer_root=mock.Mock(return_value=Path("/tmp")),
         )
         self.env_manager = mock.Mock(spec_set=EnvironmentManager)
         self.finished_callback = mock.Mock()
@@ -336,11 +337,9 @@ class TestChangeConfig(TaskComputerAdapterTestBase):
     @defer.inlineCallbacks
     def test_both_computers_reconfigured(self):
         config_desc = ClientConfigDescriptor()
-        self.task_server.get_task_computer_root.return_value = '/test'
         yield self.adapter.change_config(config_desc)
         self.new_computer.change_config.assert_called_once_with(
             config_desc=config_desc,
-            work_dir=Path('/test')
         )
         self.old_computer.change_config.assert_called_once_with(
             config_desc=config_desc,
