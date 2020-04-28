@@ -14,6 +14,8 @@ from apps.wasm.task import (
     WasmTaskTypeInfo
 )
 
+from .. import TaskRestartMixin
+
 
 def _fake_performance():
     class FakePerformance:
@@ -136,7 +138,7 @@ class WasmTaskBuilderTestCase(TestCase):
         )
 
 
-class WasmTaskTestCase(TempDirFixture):
+class WasmTaskTestCase(TaskRestartMixin, TempDirFixture):
     @mock.patch("golem.model.Performance.get",
                 mock.Mock(return_value=_fake_performance()))
     def setUp(self):

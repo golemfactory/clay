@@ -74,7 +74,8 @@ class TestResourceHandhsake(TestWithClient):
         if exception:
             raise Exception(exception)
 
-        mock_queue.assert_called_once_with(node_id=self.key_id, msg=mock.ANY)
+        mock_queue.assert_called_once_with(
+            node_id=self.key_id, msg=mock.ANY, timeout=mock.ANY)
 
     def test_start_handshake_nonce_errback(self, *_):
         deferred = Deferred()

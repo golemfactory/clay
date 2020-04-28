@@ -19,9 +19,9 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==3.14.2
-Golem-Smart-Contracts-Interface==1.11.1
-Golem-Task-Api==0.24.1
+Golem-Messages==3.15.0
+Golem-Smart-Contracts-Interface==1.11.2
+Golem-Task-Api==0.24.5
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
@@ -39,7 +39,7 @@ peewee<2.11,>=2.8
 peewee_migrate==0.14.0
 pluggy==0.6.0
 portalocker==1.2.1
-psutil==5.2.2
+psutil==5.6.6
 py-cpuinfo==4.0.0
 pyasn1==0.4.5
 pycparser==2.17
@@ -59,6 +59,7 @@ setuptools>=36.0.1,<39.0.0
 six==1.12.0
 tabulate
 token_bucket==0.2.0
+transitions==0.7.2
 Twisted==19.7.0
 txaio==18.8.1
 ujson==1.35

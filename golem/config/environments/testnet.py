@@ -26,10 +26,10 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
         self.IS_MAINNET = False
         self.ACTIVE_NET = TESTNET
         self.NODE_LIST = [
-            'https://rinkeby.golem.network:55555',
-            'http://188.165.227.180:55555',
-            'http://94.23.17.170:55555',
-            'http://94.23.57.58:55555',
+            'https://0.geth.testnet.golem.network:55555',
+            'http://1.geth.testnet.golem.network:55555',
+            'http://2.geth.testnet.golem.network:55555',
+            'http://3.geth.testnet.golem.network:55555',
         ]
 
         self.FALLBACK_NODE_LIST: List[str] = [
@@ -55,13 +55,15 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
 
 # P2P
 
+BROADCAST_PUBKEY = b'\xbe\x0e\xb0@\xad\xad~\xd7\xe3\xca\x96*k\x7f\x0b*\x96++\xb0{\x95+n~\xfdF\xc8\x88\xff\x06\x93cr\xb3\xcb@\xc8Y\xd5n\x98|\xec\x90$\xf2E\xf9\xbbyh:\x99"\xaf\xa2-\xc9os:\xb6\x88'  # noqa pylint: disable=line-too-long
+
 P2P_SEEDS = [
-    ('94.23.57.58', 40102),
-    ('94.23.57.58', 40104),
-    ('94.23.196.166', 40102),
-    ('94.23.196.166', 40104),
-    ('188.165.227.180', 40102),
-    ('188.165.227.180', 40104),
+    ('0.seeds.testnet.golem.network', 40102),
+    ('0.seeds.testnet.golem.network', 40104),
+    ('1.seeds.testnet.golem.network', 40102),
+    ('1.seeds.testnet.golem.network', 40104),
+    ('2.seeds.testnet.golem.network', 40102),
+    ('2.seeds.testnet.golem.network', 40104),
     ('seeds.test.golem.network', 40102),
     ('seeds.test.golem.network', 40104),
 ]

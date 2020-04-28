@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from typing import (
@@ -285,6 +286,7 @@ class TaskResourcesMixin:
             msg=message.resources.ResourceHandshakeStart(
                 resource=handshake.hash, options=options.__dict__,
             ),
+            timeout=datetime.timedelta(seconds=self.HANDSHAKE_TIMEOUT)
         )
 
     def _share_handshake_nonce(self, key_id):

@@ -11,7 +11,6 @@ from copy import copy, deepcopy
 from typing import (
     Any,
     Dict,
-    Hashable,
     Iterable,
     List,
     Optional,
@@ -61,6 +60,7 @@ from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network import broadcast
 from golem.network import nodeskeeper
 from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
@@ -193,7 +193,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
-            DailyJobsService(),
+            DailyJobsService(self),
         ]
 
         clean_resources_older_than = \
@@ -263,9 +263,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
+        from golem.rpc.api import broadcast_ as api_broadcast
         from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
+        from golem.apps import rpc as apps_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
+        app_rpc_provider = apps_rpc.ClientAppProvider(
+            self.task_server.app_manager
+        )
         providers = (
             self,
             concent_soft_switch,
@@ -276,7 +281,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
+            app_rpc_provider,
             api_ethereum.ETSProvider(self.transaction_system),
+            api_broadcast,
         )
         mapping = {}
         for rpc_provider in providers:
@@ -1526,12 +1533,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
 
 class DoWorkService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self, client: Client) -> None:
         super().__init__(interval_seconds=1)
         self._client = client
-        self._check_ts: Dict[Hashable, Any] = {}
 
     def start(self):
         super().start(now=False)
@@ -1560,17 +1564,8 @@ class DoWorkService(LoopingCallService):
         except Exception:
             logger.exception("ranking.sync_network failed")
 
-    def _time_for(self, key: Hashable, interval_seconds: float):
-        now = time.time()
-        if now >= self._check_ts.get(key, 0):
-            self._check_ts[key] = now + interval_seconds
-            return True
-        return False
-
 
 class MonitoringPublisherService(LoopingCallService):
-    _task_server = None  # type: TaskServer
-
     def __init__(self,
                  task_server: TaskServer,
                  interval_seconds: int) -> None:
@@ -1613,18 +1608,12 @@ class MonitoringPublisherService(LoopingCallService):
 
 
 class NetworkConnectionPublisherService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
         self._last_value = self.poll()
-
-    def _run_async(self):
-        # Skip the async_run call and publish events in the main thread
-        self._run()
 
     def _run(self):
         current_value = self.poll()
@@ -1641,11 +1630,10 @@ class NetworkConnectionPublisherService(LoopingCallService):
 
 
 class TaskArchiverService(LoopingCallService):
-    _task_archiver = None  # type: TaskArchiver
-
     def __init__(self,
                  task_archiver: TaskArchiver) -> None:
-        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
+        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL,
+                         run_in_thread=True)
         self._task_archiver = task_archiver
 
     def _run(self):
@@ -1653,14 +1641,11 @@ class TaskArchiverService(LoopingCallService):
 
 
 class ResourceCleanerService(LoopingCallService):
-    _client = None  # type: Client
-    older_than_seconds = 0  # type: int
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int,
                  older_than_seconds: int) -> None:
-        super().__init__(interval_seconds)
+        super().__init__(interval_seconds, run_in_thread=True)
         self._client = client
         self.older_than_seconds = older_than_seconds
 
@@ -1672,8 +1657,6 @@ class ResourceCleanerService(LoopingCallService):
 
 
 class TaskCleanerService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int) -> None:
@@ -1685,7 +1668,6 @@ class TaskCleanerService(LoopingCallService):
 
 
 class MaskUpdateService(LoopingCallService):
-
     def __init__(
             self,
             requested_task_manager: 'RequestedTaskManager',
@@ -1732,15 +1714,17 @@ class MaskUpdateService(LoopingCallService):
 
 
 class DailyJobsService(LoopingCallService):
-    def __init__(self):
+    def __init__(self, client: Client):
         super().__init__(
-            interval_seconds=datetime.timedelta(days=1).total_seconds(),
+            interval_seconds=int(datetime.timedelta(days=1).total_seconds()),
         )
+        self._client = client
 
     def _run(self) -> None:
-        jobs = (
+        jobs = [
             nodeskeeper.sweep,
             msg_queue.sweep,
+            broadcast.sweep,
             lambda: logger.info(
                 "Time marker. time(): %s now(): %s, utcnow(): %s, delta: %s",
                 time.time(),
@@ -1748,7 +1732,11 @@ class DailyJobsService(LoopingCallService):
                 datetime.datetime.utcnow(),
                 datetime.datetime.now() - datetime.datetime.utcnow(),
             ),
-        )
+        ]
+
+        if self._client.task_server:
+            jobs.append(self._client.task_server.app_manager.update_apps)
+
         logger.info('Running daily jobs')
         for job in jobs:
             try:

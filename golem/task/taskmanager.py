@@ -924,7 +924,7 @@ class TaskManager(TaskEventListener):
                         logger.info("Subtask %r dies with status %r",
                                     s.subtask_id,
                                     s.status.value)
-                        s.status = SubtaskStatus.failure
+                        s.status = SubtaskStatus.timeout
                         nodes_with_timeouts.append(s.node_id)
                         t.computation_failed(s.subtask_id)
                         s.stderr = "[GOLEM] Timeout"
@@ -994,7 +994,6 @@ class TaskManager(TaskEventListener):
             task_status=TaskStatus.errorCreating,
     ) -> None:
         assert not task_status.is_active()
-        assert not task_status.is_completed()
         task_state = self.tasks_states[task_id]
         if task_state.status.is_completed():
             logger.debug(
@@ -1024,7 +1023,16 @@ class TaskManager(TaskEventListener):
             new_status: SubtaskStatus = SubtaskStatus.restarted,
     ):
         task_id = self.subtask2task_mapping[subtask_id]
-        self.tasks[task_id].restart_subtask(subtask_id)
+        logger.debug(
+            "Restart subtask. subtask_id=%s, new_status=%s, task_id=%s",
+            subtask_id,
+            new_status,
+            task_id,
+        )
+        self.tasks[task_id].restart_subtask(
+            subtask_id,
+            new_state=new_status,
+        )
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.computing
         subtask_state = task_state.subtask_states[subtask_id]

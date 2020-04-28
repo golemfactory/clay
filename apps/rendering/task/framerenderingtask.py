@@ -5,6 +5,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     TYPE_CHECKING,
     Type,
     cast,
@@ -168,8 +169,15 @@ class FrameRenderingTask(RenderingTask):
         if self.use_frames:
             self._update_subtask_frame_status(subtask_id)
 
-    def restart_subtask(self, subtask_id):
-        super(FrameRenderingTask, self).restart_subtask(subtask_id)
+    def restart_subtask(
+            self,
+            subtask_id,
+            new_state: Optional[SubtaskStatus] = None,
+    ):
+        super(FrameRenderingTask, self).restart_subtask(
+            subtask_id,
+            new_state=new_state,
+        )
         self._update_subtask_frame_status(subtask_id)
 
     def get_output_names(self):

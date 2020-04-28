@@ -196,7 +196,8 @@ TASK_STATUS_COMPLETED = [
     TaskStatus.finished,
     TaskStatus.aborted,
     TaskStatus.timeout,
-    TaskStatus.restarted
+    TaskStatus.restarted,
+    TaskStatus.errorCreating,
 ]
 
 

@@ -2,6 +2,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import datetime
 import functools
 import itertools
 import logging
@@ -32,12 +33,10 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
-import golem.apps
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem import constants as gconst
 from golem.apps import manager as app_manager
-from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import (
     short_node_id,
@@ -50,7 +49,7 @@ from golem.core.deferred import (
     deferred_from_future,
     sync_wait,
 )
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES, ENV_TASK_API_DEV
 from golem.environments.environment import (
     Environment as OldEnv,
     SupportStatus,
@@ -146,18 +145,15 @@ class TaskServer(
         runtime_logs_dir = get_log_dir(client.datadir)
         new_env_manager = EnvironmentManager(runtime_logs_dir)
         register_built_in_repositories()
+        task_api_dev_mode = ENV_TASK_API_DEV in os.environ \
+            and os.environ[ENV_TASK_API_DEV] == "1"
         register_environments(
             work_dir=self.get_task_computer_root(),
-            env_manager=new_env_manager)
+            env_manager=new_env_manager,
+            dev_mode=task_api_dev_mode,
+        )
 
-        app_dir = self.get_app_dir()
-        built_in_apps = save_built_in_app_definitions(app_dir)
-
-        self.app_manager = app_mgr = app_manager.AppManager()
-        for app_def in golem.apps.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_def)
-        for app_id in built_in_apps:
-            app_mgr.set_enabled(app_id, True)
+        self.app_manager = app_manager.AppManager(self.get_app_dir())
 
         self.node = node
         self.task_archiver = task_archiver
@@ -178,7 +174,7 @@ class TaskServer(
         )
 
         self.requested_task_manager = RequestedTaskManager(
-            app_manager=app_mgr,
+            app_manager=self.app_manager,
             env_manager=new_env_manager,
             public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
@@ -349,15 +345,20 @@ class TaskServer(
             request exceeds the configured request interval, choose a random
             task from the network to compute on our machine. """
 
+        logger.debug("_request_random_task... ")
         if time.time() - self._last_task_request_time \
                 < self.config_desc.task_request_interval:
+            logger.debug("_request_random_task: interval not yet passed")
             return
 
         if (not self.task_computer.compute_tasks) \
                 or (not self.task_computer.runnable):
+            logger.debug(
+                "_request_random_task: task computer disabled or not ready")
             return
 
         if not self.task_computer.can_take_work():
+            logger.debug("_request_random_task: task computer still busy")
             return
 
         compatible_tasks = self.task_computer.compatible_tasks(
@@ -365,8 +366,18 @@ class TaskServer(
 
         task_header = self.task_keeper.get_task(
             exclude=self.requested_tasks, supported_tasks=compatible_tasks)
+
         if task_header is None:
+            logger.debug(
+                "_request_random_task: no suitable task found. "
+                "exclude=%s, supported_tasks=%s",
+                self.requested_tasks,
+                compatible_tasks,
+            )
             return
+
+        logger.debug(
+            "_request_random_task: got task header: %s", task_header)
 
         self._last_task_request_time = time.time()
         self.task_computer.stats.increase_stat('tasks_requested')
@@ -512,6 +523,8 @@ class TaskServer(
             msg_queue.put(
                 node_id=theader.task_owner.key,
                 msg=wtct,
+                timeout=datetime.timedelta(
+                    seconds=deadline_to_timeout(theader.deadline))
             )
 
             timer.ProviderTTCDelayTimers.start(wtct.task_id)
@@ -591,6 +604,7 @@ class TaskServer(
             requestor_id: str,
             price: int,
     ) -> None:
+        logger.debug("requested_tasks cleared")
         self.requested_tasks.clear()
         update_requestor_assigned_sum(requestor_id, price)
         dispatcher.send(
@@ -836,6 +850,7 @@ class TaskServer(
 
     @rpc_utils.expose('comp.tasks.known.delete')
     def remove_task_header(self, task_id) -> bool:
+        logger.debug("removing task header: task_id=%s", task_id)
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
@@ -1114,6 +1129,11 @@ class TaskServer(
             accept_client_verdict = task.should_accept_client(
                 node_id,
                 offer_hash)
+            logger.debug(
+                "should_accept_client verdict: %s, task_id=%s",
+                accept_client_verdict,
+                task_id,
+            )
         elif self.requested_task_manager.task_exists(task_id):
             req_task = self.requested_task_manager.get_requested_task(task_id)
             assert req_task, "Task missing due a race condition"

@@ -304,9 +304,36 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
 
         return self.call(node_id, 'comp.tasks', on_success=on_success)
 
-    def step_create_task(self, node_id: NodeId = NodeId.requestor):
+    def step_enable_app(self, node_id: NodeId = NodeId.requestor):
+        app_id = self.config.task_dict.get('golem', {}).get('app_id')
+        if not app_id:
+            print('not task api, no need to enable app')
+            self.next()
+            return
+
+        def on_success(result):
+            print(f'finished enabling app. result={result}, app_id={app_id}')
+            self.next()
+
+        print(f'enabling app. app_id={app_id}')
+        return self.call(
+            node_id,
+            'apps.update',
+            app_id,
+            True,
+            on_success=on_success
+        )
+
+    def step_create_task(
+            self,
+            node_id: NodeId = NodeId.requestor,
+            task_dict: typing.Optional[dict] = None,
+    ):
+        if not task_dict:
+            task_dict = self.config.task_dict
+
         print("Output path: {}".format(self.output_path))
-        print("Task dict: {}".format(self.config.task_dict))
+        print("Task dict: {}".format(task_dict))
 
         def on_success(result):
             if result[0]:
@@ -328,21 +355,34 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
             return self.call(
                 node_id,
                 self.RPC_TASK_CREATE,
-                self.config.task_dict,
+                task_dict,
                 on_success=on_success
             )
+
+    @staticmethod
+    def _identify_new_task_id(
+            tasks: set,
+            known_tasks: set
+    ) -> typing.Optional[str]:
+        new_tasks = tasks - known_tasks
+        if len(new_tasks) != 1:
+            print("Cannot find the new task ({})".format(new_tasks))
+            time.sleep(3)
+            return None
+        else:
+            task_id = list(new_tasks)[0]
+            print("Task id: {}".format(task_id))
+            return task_id
 
     def step_get_task_id(self, node_id: NodeId = NodeId.requestor):
 
         def on_success(result):
-            tasks = set(map(lambda r: r['id'], result))
-            new_tasks = tasks - self.known_tasks
-            if len(new_tasks) != 1:
-                print("Cannot find the new task ({})".format(new_tasks))
-                time.sleep(3)
-            else:
-                self.task_id = list(new_tasks)[0]
-                print("Task id: {}".format(self.task_id))
+            task_id = self._identify_new_task_id(
+                set(map(lambda r: r['id'], result)),
+                self.known_tasks
+            )
+            if task_id:
+                self.task_id = task_id
                 self.next()
 
         return self.call(node_id, 'comp.tasks', on_success=on_success)
@@ -355,7 +395,11 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
         return self.call(node_id, 'comp.task', self.task_id,
                          on_success=on_success)
 
-    def step_wait_task_finished(self, node_id: NodeId = NodeId.requestor):
+    def step_wait_task_finished(
+            self,
+            node_id: NodeId = NodeId.requestor,
+            task_id: typing.Optional[str] = None,
+    ):
         def on_success(result):
             if result['status'] == 'Finished':
                 print("Task finished.")
@@ -366,8 +410,12 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
 
-        return self.call(node_id, 'comp.task', self.task_id,
-                         on_success=on_success)
+        return self.call(
+            node_id,
+            'comp.task',
+            task_id or self.task_id,
+            on_success=on_success
+        )
 
     def step_verify_output(self):
         settings = self.task_settings_dict
@@ -550,6 +598,7 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
     )
 
     steps: typing.Tuple = initial_steps + (
+        step_enable_app,
         step_create_task,
         step_get_task_id,
         step_get_task_status,

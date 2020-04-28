@@ -23,6 +23,8 @@ from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
+from ... import TaskRestartMixin
+
 
 def _get_test_exr(alt=False):
     if not alt:
@@ -49,7 +51,7 @@ class RenderingTaskMock(RenderingTask):
         pass
 
 
-class TestRenderingTask(TestDirFixture, LogTestCase):
+class TestRenderingTask(TaskRestartMixin, TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingTask, self).setUp()
         files = self.additional_dir_content([3])

@@ -2,6 +2,7 @@ import os
 import shutil
 from os import path
 
+from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
 from golem.tools.ci import ci_skip
 from .test_docker_job import TestDockerJob
@@ -15,7 +16,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
         return "golemfactory/dummy"
 
     def _get_test_tag(self):
-        return "1.3"
+        return DummyTaskEnvironment.DOCKER_TAG
 
     def test_dummytask_job(self):
         os.mkdir(os.path.join(self.resources_dir, "data"))

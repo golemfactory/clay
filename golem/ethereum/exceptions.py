@@ -42,7 +42,7 @@ class NotEnoughFunds(EthereumError):
         ])
 
     def __str__(self) -> str:
-        return "Not enough funds available.\n" + self._missing_funds_to_str()
+        return "Not enough funds available." + self._missing_funds_to_str()
 
     def to_dict(self) -> dict:
         err_dict = super().to_dict()
@@ -54,15 +54,15 @@ class NotEnoughFunds(EthereumError):
     def _missing_funds_to_str(self) -> str:
         res = ""
         for required, available, currency in self.missing_funds:
-            res += f"Required {currency}: {required / denoms.ether:f}, " \
-                f"available: {available / denoms.ether:f}\n"
+            res += f" Required {currency}: {required / denoms.ether:f}, " \
+                f"available: {available / denoms.ether:f}."
 
         return res
 
 
 class NotEnoughDepositFunds(NotEnoughFunds):
     def __str__(self) -> str:
-        return "Not enough funds for Concent deposit." \
+        return "Not enough funds for Concent deposit. " \
                "Top up your account or create the task with Concent disabled." \
                + self._missing_funds_to_str()
 

@@ -109,13 +109,13 @@ class TestInit(TestCase):
     @patch_env('_validate_config', side_effect=ValueError)
     def test_invalid_config(self, *_):
         with self.assertRaises(ValueError):
-            DockerCPUEnvironment(Mock(spec=DockerCPUConfig))
+            DockerCPUEnvironment(Mock(spec=DockerCPUConfig), dev_mode=False)
 
     @patch_env('_validate_config')
     @patch_env('_get_hypervisor_class', return_value=None)
     def test_no_hypervisor(self, *_):
         with self.assertRaises(EnvironmentError):
-            DockerCPUEnvironment(Mock(spec=DockerCPUConfig))
+            DockerCPUEnvironment(Mock(spec=DockerCPUConfig), dev_mode=False)
 
     @patch_env('_constrain_hypervisor')
     @patch_env('_update_work_dirs')
@@ -140,7 +140,7 @@ class TestInit(TestCase):
             })
         get_hypervisor.return_value.instance = _instance
 
-        DockerCPUEnvironment(config)
+        DockerCPUEnvironment(config, dev_mode=False)
 
         get_hypervisor.assert_called_once()
         validate_config.assert_called_once_with(config)
@@ -160,7 +160,7 @@ class TestDockerCPUEnv(TestCase):
         get_hypervisor.return_value.instance.return_value = self.hypervisor
         self.logger = Mock(spec=Logger)
         with patch_cpu('logger', self.logger):
-            self.env = DockerCPUEnvironment(self.config)
+            self.env = DockerCPUEnvironment(self.config, dev_mode=False)
 
     def _patch_async(self, name, *args, **kwargs):
         patcher = patch_cpu(name, *args, **kwargs)
@@ -328,11 +328,6 @@ class TestUpdateConfig(TestDockerCPUEnv):
     def test_wrong_type(self):
         with self.assertRaises(AssertionError):
             self.env.update_config(object())
-
-    def test_enabled_status(self):
-        self.env._status = EnvStatus.ENABLED
-        with self.assertRaises(ValueError):
-            self.env.update_config(Mock(spec=DockerCPUConfig))
 
     @patch_env('_validate_config', side_effect=ValueError)
     def test_invalid_config(self, validate):
@@ -592,7 +587,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
     @patch_cpu('local_client')
     def test_published_ports(self, local_client):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
-        port = 4444
+        port = 3333
         payload = mock_docker_runtime_payload(ports=[port])
         host_config = self.env._create_host_config(config, payload)
 

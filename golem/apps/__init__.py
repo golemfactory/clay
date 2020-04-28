@@ -1,11 +1,12 @@
 import hashlib
 import logging
 from pathlib import Path
-from typing import Dict, Any, Iterator, Type
+from typing import Dict, Any, Iterator, Type, Tuple
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config
 from marshmallow import fields as mm_fields
+from pathvalidate import sanitize_filename
 
 from golem.marketplace import (
     RequestorMarketStrategy,
@@ -81,11 +82,17 @@ def load_app_from_json_file(json_file: Path) -> AppDefinition:
         raise ValueError(msg)
 
 
-def load_apps_from_dir(app_dir: Path) -> Iterator[AppDefinition]:
+def load_apps_from_dir(app_dir: Path) -> Iterator[Tuple[Path, AppDefinition]]:
     """ Read every file in the given directory and attempt to parse it. Ignore
         files which don't contain valid app definitions. """
     for json_file in app_dir.iterdir():
         try:
-            yield load_app_from_json_file(json_file)
+            yield (json_file, load_app_from_json_file(json_file))
         except ValueError:
             continue
+
+
+def app_json_file_name(app_def: AppDefinition) -> str:
+    filename = f"{app_def.name}_{app_def.version}_{app_def.id}.json"
+    filename = sanitize_filename(filename, replacement_text="_")
+    return filename

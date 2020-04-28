@@ -38,7 +38,7 @@ class ComputingSubtaskStateSnapshot:
         self.running_time_seconds = running_time_seconds
         self.outfilebasename = outfilebasename
         self.output_format = output_format
-        self.scene_file = Path(scene_file).name
+        self.scene_file = Path(scene_file).name if scene_file else None
         self.frames = copy(frames)
         self.start_task = start_task
         self.total_tasks = total_tasks

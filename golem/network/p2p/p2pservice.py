@@ -72,7 +72,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         network = tcpnetwork.TCPNetwork(
             ProtocolFactory(
-                tcpnetwork.SafeProtocol,
+                tcpnetwork.BroadcastProtocol,
                 self,
                 SessionFactory(PeerSession)
             ),
@@ -882,13 +882,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         for p in list(self.peers.values()):
             p.send_get_tasks()
 
-    def __connection_established(self, session, conn_id: str):
-        peer_conn = session.conn.transport.getPeer()
+    def __connection_established(
+            self,
+            protocol: tcpnetwork.BroadcastProtocol,
+            conn_id: str,
+    ):
+        peer_conn = protocol.transport.getPeer()
         ip_address = peer_conn.host
         port = peer_conn.port
 
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
+        protocol.conn_id = conn_id
+        self._mark_connected(conn_id, ip_address, port)
 
         logger.debug("Connection to peer established. %s: %s, conn_id %s",
                      ip_address, port, conn_id)

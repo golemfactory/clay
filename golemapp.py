@@ -10,7 +10,6 @@ import click
 import humanize
 import psutil
 from cpuinfo import get_cpu_info
-from ethereum import slogging
 from portalocker import Lock, LockException
 
 # Export pbr version for peewee_migrate user
@@ -34,19 +33,6 @@ from golem.rpc import (  # noqa
 )
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
-
-# ethereum.slogging and logging compatibility patch
-orig_getLogger = slogging.SManager.getLogger
-
-
-def monkey_patched_getLogger(*args, **kwargs):
-    orig_class = logging.getLoggerClass()
-    result = orig_getLogger(*args, **kwargs)
-    logging.setLoggerClass(orig_class)
-    return result
-
-
-slogging.SManager.getLogger = monkey_patched_getLogger
 
 
 @click.command()
@@ -106,11 +92,13 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--enable-talkback', is_flag=True, default=None)
 @click.option('--hyperdrive-port', type=int, help="Hyperdrive public port")
 @click.option('--hyperdrive-rpc-port', type=int, help="Hyperdrive RPC port")
+@click.option('--task-api-dev', is_flag=True, default=False,
+              help="Enable task-api developer mode")
 def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
         accept_all_terms, version, log_level, enable_talkback: bool,
-        hyperdrive_port, hyperdrive_rpc_port,
+        hyperdrive_port, hyperdrive_rpc_port, task_api_dev,
 ):
     if version:
         print("GOLEM version: {}".format(golem.__version__))
@@ -165,6 +153,22 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         log_platform_info()
         log_ethereum_config(ethereum_config)
         log_concent_choice(ethereum_config.CONCENT_VARIANT)
+
+        # Config variables continued, after logging is enabled
+        if variables.ENV_TASK_API_DEV not in os.environ:
+            if task_api_dev:
+                os.environ[variables.ENV_TASK_API_DEV] = '1'
+            else:
+                os.environ[variables.ENV_TASK_API_DEV] = '0'
+        else:
+            if os.environ[variables.ENV_TASK_API_DEV] not in ['0', '1']:
+                logger.warning(
+                    "Invalid value in ENV[%r]: given %r should be '0' or '1'."
+                    " Using default value = '0'",
+                    variables.ENV_TASK_API_DEV,
+                    os.environ[variables.ENV_TASK_API_DEV],
+                )
+                os.environ[variables.ENV_TASK_API_DEV] = '0'
 
         node = Node(
             datadir=datadir,
