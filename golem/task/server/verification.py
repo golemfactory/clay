@@ -76,8 +76,7 @@ class VerificationMixin:
                 # providers.
                 self.disallow_node(
                     node_id=node.key,
-                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
-                    persist=False,
+                    timeout_seconds=config_desc.disallow_node_timeout_seconds
                 )
             if config_desc.disallow_ip_timeout_seconds is not None:
                 # Experimental feature. Try to spread subtasks fairly amongst

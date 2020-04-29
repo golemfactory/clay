@@ -72,7 +72,7 @@ class TestAcl(DatabaseFixture):
         assert acl.is_allowed("Node1")[0]
         assert acl.is_allowed("Node2")[0]
 
-        acl.disallow("Node1")
+        acl.disallow("Node1", timeout_seconds=10000)
         # should not throw
         acl.disallow("Node1")
         acl.disallow("Node1", 5)
@@ -198,7 +198,7 @@ class TestAcl(DatabaseFixture):
 
         acl = setup_acl(self.client, AclRule.deny, [])
         acl.allow('Node5', persist=True)
-        acl.disallow('Node4', persist=True)
+        acl.disallow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
         self.assertCountEqual(
@@ -222,9 +222,9 @@ class TestAcl(DatabaseFixture):
         node_4.save()
 
         acl = get_acl(self.client)
-        acl.disallow('Node1', persist=True)
-        acl.disallow('Node2', persist=True)
-        acl.disallow('Node1', persist=True)
+        acl.disallow('Node1')
+        acl.disallow('Node2')
+        self.assertEqual(False, acl.disallow('Node1'))
         acl.allow('Node1')
         acl.allow('Node4', persist=True)
 
@@ -246,10 +246,10 @@ class TestAcl(DatabaseFixture):
     def test_allow_disallow_persistence(self):
 
         acl = setup_acl(self.client, AclRule.deny, ['Node1', 'Node2'])
+        acl.disallow('Node1')
+        self.assertEqual(False, acl.disallow("Node3"))
+        self.assertEqual(False, acl.disallow("Node1"))
 
-        acl.disallow('Node1', persist=True)
-        acl.disallow('Node3', persist=True)
-        acl.disallow('Node1', persist=True)
         acl.allow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
@@ -291,12 +291,12 @@ class TestAcl(DatabaseFixture):
         self.assertCountEqual([node['node_name'] for node in allowed_ips],
                               ['Node2', 'Node1', None])
         # Remove uknown IP
-        acl.disallow('4.247.45.93', persist=True)
+        acl.disallow('4.247.45.93')
         allowed_ips = [r[0] for r in acl.status().rules]
         self.assertCountEqual(
             [node['node_name'] for node in allowed_ips], ['Node1', 'Node2'])
         # Remove known IP
-        acl.disallow('34.107.145.130', persist=True)
+        acl.disallow('34.107.145.130')
         allowed_ips = [r[0] for r in acl.status().rules]
         self.assertCountEqual(
             [node['node_name'] for node in allowed_ips], ['Node2'])
