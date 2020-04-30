@@ -255,8 +255,7 @@ class TaskResourcesMixin:
         )
         self.disallow_node(
             node_id=key_id,
-            timeout_seconds=variables.ACL_BLOCK_TIMEOUT_RESOURCE,
-            persist=False,
+            timeout_seconds=variables.ACL_BLOCK_TIMEOUT_RESOURCE
         )
         del self.resource_handshakes[key_id]
 

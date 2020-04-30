@@ -70,12 +70,12 @@ class Acl(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def disallow(self, node_id: str, timeout_seconds: int, persist: bool) \
-            -> None:
+    def disallow(self, node_id: str, timeout_seconds: int) \
+            -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def allow(self, node_id: str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool) -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -147,16 +147,15 @@ class _DenyAcl(Acl):
         return True, None
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = -1,
-                 persist: bool = False) -> None:
+                 timeout_seconds: int = -1) -> bool:
+        persist = timeout_seconds < 0
         logger.info(
             'Banned node. node_id=%s, timeout=%ds, persist=%s',
             common.short_node_id(node_id),
             timeout_seconds,
-            persist,
+            persist
         )
-
-        if timeout_seconds < 0:
+        if persist:
             self._deny_deadlines[node_id] = self._always
         else:
             if node_id not in self._deny_deadlines:
@@ -164,24 +163,27 @@ class _DenyAcl(Acl):
             node_deadlines = self._deny_deadlines[node_id]
 
             if node_deadlines is self._always:
-                return
+                return False
 
             assert isinstance(node_deadlines, SortedList)
             node_deadlines.add(self._deadline(timeout_seconds))
 
-        if persist and timeout_seconds == -1:
+        if persist:
             try:
-                existNode = ACLDeniedNodes.get(node_id=node_id)
+                ACLDeniedNodes.get(node_id=node_id)
+                return False
             except ACLDeniedNodes.DoesNotExist:
-                existNode = None
-            if not existNode:
                 peers = self._client.p2pservice.incoming_peers or dict()
-                node = peers[node_id]
+                if node_id in peers:
+                    node = peers[node_id]
+                else:
+                    node = dict(node_name="Unknown")
                 node_db = ACLDeniedNodes(
                     node_id=node_id, node_name=node['node_name'])
                 node_db.save()
+        return True
 
-    def allow(self, node_id: str, persist: bool = False) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> bool:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -192,15 +194,15 @@ class _DenyAcl(Acl):
 
         if persist:
             try:
-                existNode = ACLDeniedNodes.get(node_id=node_id)
+                ACLDeniedNodes.get(node_id=node_id)
             except ACLDeniedNodes.DoesNotExist:
-                existNode = None
-
-            if existNode:
+                return False
+            finally:
                 ACLDeniedNodes \
                     .delete() \
                     .where(ACLDeniedNodes.node_id == node_id) \
                     .execute()
+        return True
 
     def status(self) -> AclStatus:
         _always = self._always
@@ -273,30 +275,28 @@ class _AllowAcl(Acl):
         return False, DenyReason.not_whitelisted
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = 0,
-                 persist: bool = False) -> None:
-
+                 timeout_seconds: int = -1) -> bool:
+        persist = timeout_seconds < 0
         if persist:
             logger.info(
-                'Banned node. node_id=%s, timeout=%ds, persist=%s',
+                'Removed node. node_id=%s, timeout=%ds, persist=True',
                 common.short_node_id(node_id),
-                timeout_seconds,
-                persist,
+                timeout_seconds
             )
             self._allow_list = [node for node in self._allow_list if not (
                 node_id == node.node_id)]
             try:
-                existNode = ACLAllowedNodes.get(node_id=node_id)
+                ACLAllowedNodes.get(node_id=node_id)
             except ACLAllowedNodes.DoesNotExist:
-                existNode = None
-
-            if existNode:
+                return False
+            finally:
                 ACLAllowedNodes \
                     .delete() \
                     .where(ACLAllowedNodes.node_id == node_id) \
                     .execute()
+        return True
 
-    def allow(self, node_id: str, persist: bool = False) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> bool:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -312,12 +312,11 @@ class _AllowAcl(Acl):
 
         if persist:
             try:
-                existNode = ACLAllowedNodes.get(node_id=node_id)
+                ACLAllowedNodes.get(node_id=node_id)
+                return False
             except ACLAllowedNodes.DoesNotExist:
-                existNode = None
-
-            if not existNode:
                 node_model.save()
+        return True
 
     def status(self) -> AclStatus:
         self._read_list()

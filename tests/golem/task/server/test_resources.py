@@ -159,5 +159,4 @@ class TestResourceHandhsake(TestWithClient):
         disallow_mock.assert_called_once_with(
             node_id=self.key_id,
             timeout_seconds=mock.ANY,
-            persist=False,
         )
