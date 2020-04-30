@@ -2,7 +2,6 @@ import logging
 from typing import Dict, List, Tuple
 from pathlib import Path
 
-from dataclasses import asdict
 from requests.exceptions import RequestException
 
 from golem.apps import (
@@ -116,7 +115,7 @@ class AppManager:
                 app_file_path = self.app_dir / app_json_file_name(app)
                 self._app_file_names[app.id] = app_file_path
 
-            EventPublisher.publish(App.evt_new_definiton, asdict(app))
+            EventPublisher.publish(App.evt_new_definiton, app.to_dict())
 
 
 class AppStates:

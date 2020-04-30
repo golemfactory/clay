@@ -57,6 +57,9 @@ class AppDefinition:
     def to_json(self) -> str:
         raise NotImplementedError  # A stub to silence the linters
 
+    def to_dict(self) -> Any:
+        raise NotImplementedError  # A stub to silence the linters
+
 
 def save_app_to_json_file(app_def: AppDefinition, json_file: Path) -> None:
     """ Save application definition to the given file in JSON format.
