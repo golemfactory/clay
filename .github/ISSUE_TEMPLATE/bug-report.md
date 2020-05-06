@@ -3,7 +3,6 @@ name: Bug report
 about: Please tell us if you encountered an issue with Golem
 title: ''
 labels: P3, brass, bug
-assignees: ZmijaWA
 
 ---
 
