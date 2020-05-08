@@ -10,7 +10,7 @@ import dill
 from dataclasses import dataclass, asdict
 from golem_task_api import RequestorAppHandler, ProviderAppHandler
 from golem_task_api.dirutils import RequestorTaskDir
-from golem_task_api.entrypoint import entrypoint
+from golem_task_api.entrypoint import main as entrypoint
 from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask, Task
 from twisted.internet import defer, threads
