@@ -139,10 +139,13 @@ class BenchmarkManager(object):
 
     @staticmethod
     def run_default_benchmark(callback, errback):
-        kwargs = {'func': DefaultEnvironment.run_default_benchmark,
-                  'callback': callback,
-                  'errback': errback,
-                  'save': True}
+        kwargs = {
+            'func': lambda **kwargs: DefaultEnvironment.run_default_benchmark(
+                **kwargs).performance,
+            'callback': callback,
+            'errback': errback,
+            'save': True
+        }
         Thread(target=callback_wrapper, kwargs=kwargs).start()
 
 
