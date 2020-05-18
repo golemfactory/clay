@@ -677,6 +677,7 @@ class TaskHeaderKeeper:
             if supported_tasks is not None else self.supported_tasks
         if exclude:
             tasks = [t for t in tasks if t not in exclude]
+        tasks = [t for t in tasks if t in self.task_headers]
         if not tasks:
             logger.debug("`get_task`: no potential task candidates found.")
             return None
