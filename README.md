@@ -11,6 +11,8 @@ One core component to Golem’s built-in feature set is an [**Ethereum-based tra
 
 Learn more with our [Docs](https://docs.golem.network/#/)
 
+:warning: Please keep in mind that the implemenation of the next version of Golem is taking place in [yagna](https://github.com/golemfactory/yagna) repository. 
+
 ## Installing and testing
 
 Follow [installation guidelines](https://docs.golem.network/#/Products/Clay-Beta/Installation)
@@ -18,6 +20,10 @@ Follow [installation guidelines](https://docs.golem.network/#/Products/Clay-Beta
 ## Usage & troubleshoothing
 
 The most common problems are described in [Issues & Troubleshooting](https://docs.golem.network/#/Products/Clay-Beta/Issues-&-Troubleshooting) section.
+
+## Contributing 
+
+Please check our [Contribution guidelines](https://docs.golem.network/#/Contributing/Contributing-guidelines).
 
 ## Contact  
 
