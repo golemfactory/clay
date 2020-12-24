@@ -44,7 +44,7 @@ class HandlersLibrary():
             except KeyError:
                 pass
 
-            # It check wheter f is boundmethod not method/class function
+            # It check whether f is boundmethod not method/class function
             ref: typing.Optional[weakref.ref] = None
             if inspect.ismethod(f):
                 ref = weakref.WeakMethod(f)
