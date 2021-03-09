@@ -1,6 +1,6 @@
 ---
 name: Clay Golem issue
-about: Clay Golem has been discontinued. For any issues concerning the new Golem, please visit: https://github.com/golemfactory/yagna/issues
+about: Clay Golem has been discontinued. For any issues concerning the new Golem, please visit the golemfactory/yagna repository.
 title: ''
 labels: brass
 
