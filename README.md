@@ -1,5 +1,20 @@
+# Discontinuation notice for the Clay Golem
 
 :warning: Clay Golem (ex. Brass Golem) has been discontinued. The current, completely new incarnation of Golem is called [yagna](https://github.com/golemfactory/yagna) and developed within a separate set of repositories.
+
+## Providers
+
+To become a new Golem provider, please follow the instructions in our [Provider's handbook](https://handbook.golem.network/provider-tutorials/provider-tutorial)
+
+## Requestors
+
+On the other hand, if you're interested in running or developing applications on Golem, please have a look at:
+
+* [Requestor's handbook](https://handbook.golem.network/requestor-tutorials/)
+* [Python API](https://github.com/golemfactory/yapapi)
+* [JS API](https://github.com/golemfactory/yajsapi/)
+
+----
 
 # Golem
 
