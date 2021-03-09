@@ -1,10 +1,16 @@
 ---
-name: Bug report
-about: Please tell us if you encountered an issue with Golem
+name: Clay Golem issue
+about: Clay Golem has been discontinued. For any issues concerning the new Golem, please visit [yagna issues](https://github.com/golemfactory/yagna/issues)
 title: ''
-labels: P3, brass, bug
+labels: brass
 
 ---
+
+# Discontinuation notice for the Clay Golem
+
+:warning: Clay Golem (ex. Brass Golem) has been discontinued. The current, completely new incarnation of Golem is called [yagna](https://github.com/golemfactory/yagna) and developed within a separate set of repositories.
+
+----
 
 ## Description
 
