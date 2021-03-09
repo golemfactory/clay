@@ -1,17 +1,13 @@
-# Golem
 
-[![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_linux)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_linux)
-[![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_macOS)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_macOS)
-[![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_windows)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_windows)
-[![codecov](https://codecov.io/gh/golemfactory/golem/branch/develop/graph/badge.svg)](https://codecov.io/gh/golemfactory/golem)
+:warning: Clay Golem (ex. Brass Golem) has been discontinued. The current, completely new incarnation of Golem is called [yagna](https://github.com/golemfactory/yagna) and developed within a separate set of repositories.
+
+# Golem
 
 Golem is a decentralized marketplace for computing power. It enables CPUs and GPUs to connect in a peer-to-peer network, enabling both application owners and individual users ("requestors") to rent resources from other users’ ("providers") machines. These resources can be used to complete tasks requiring any amount of computation time and capacity. Nowadays, centralized cloud providers are in control of these services, these platforms are constrained by closed networks, proprietary payment systems, and hard-coded provisioning operations. Golem proposes an open-source, decentralized and user controlled alternative.
 
 One core component to Golem’s built-in feature set is an [**Ethereum-based transaction system**](https://docs.golem.network/#/About/Payments), which enables direct payments between requestors, providers, and software developers.
 
 Learn more with our [Docs](https://docs.golem.network/#/)
-
-:warning: Please keep in mind that the implemenation of the next version of Golem is taking place in [yagna](https://github.com/golemfactory/yagna) repository. 
 
 ## Installing and testing
 
