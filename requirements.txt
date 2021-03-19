@@ -64,7 +64,7 @@ idna==2.5
 incremental==17.5.0
 ipaddress==1.0.19
 iso8601==0.1.12
-Jinja2==2.10.1
+Jinja2==2.11.3
 lmdb==0.94
 lru-dict==1.1.6
 lz4==2.2.1
