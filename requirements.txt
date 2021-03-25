@@ -132,7 +132,7 @@ python-dateutil==2.8.1
 python-snappy==0.5.4
 PyTrie==0.3
 pytz==2018.4
-PyYAML==5.1
+PyYAML==5.4
 raven==6.6.0
 repoze.lru==0.7
 requests==2.21.0
