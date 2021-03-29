@@ -118,7 +118,7 @@ pycryptodome==3.6.6
 PyDispatcher==2.0.5
 pyelliptic==1.5.10
 pyethash==0.1.27
-Pygments==2.2.0
+Pygments==2.7.4
 PyHamcrest==1.9.0
 pyinotify==0.9.6; sys_platform == 'linux'
 pylru==1.0.9
