@@ -6,7 +6,7 @@ asn1crypto==0.22.0
 async-generator==1.10
 attrdict==2.0.1
 attrs==17.4.0
-autobahn==19.6.2
+autobahn==20.12.3
 Automat==0.6.0
 Babel==2.6.0
 base58==0.2.5

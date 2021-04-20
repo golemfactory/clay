@@ -3,7 +3,7 @@
 appdirs>=1.4
 asn1crypto==0.22.0
 async-generator==1.10
-autobahn==19.6.2
+autobahn==20.12.3
 Automat==0.6.0
 base58
 bidict
