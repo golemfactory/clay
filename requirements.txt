@@ -25,7 +25,7 @@ cloudpickle==0.6.1
 coincurve==7.1.0
 constantly==15.1.0
 crossbar==19.6.2
-cryptography==2.7
+cryptography==3.2
 cytoolz==0.9.0.1
 dataclasses-json==0.3.0
 dataclasses==0.6
