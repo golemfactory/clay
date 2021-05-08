@@ -44,7 +44,7 @@ eth-rlp==0.1.2
 eth-tester==0.1.0b24
 eth-utils==1.0.3
 ethereum==1.6.1
-eventlet==0.24.1
+eventlet==0.31.0
 fasteners==0.15
 flatbuffers==1.11
 fs==2.4.4
