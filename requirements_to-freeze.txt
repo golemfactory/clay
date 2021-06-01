@@ -63,7 +63,7 @@ transitions==0.7.2
 Twisted==19.7.0
 txaio==18.8.1
 ujson==1.35
-urllib3==1.24.3
+urllib3==1.26.5
 web3==4.2.1
 zope.interface==4.4.2
 zxcvbn-python
