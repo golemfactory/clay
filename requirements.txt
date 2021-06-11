@@ -170,7 +170,7 @@ urllib3==1.24.3
 watchdog==0.8.3
 web3==4.2.1
 websocket-client==0.47.0
-websockets==8.1
+websockets==9.1
 wrapt==1.10.11
 zlmdb==19.11.1
 zope.interface==4.4.2
