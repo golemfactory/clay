@@ -8,7 +8,7 @@ attrdict==2.0.1
 attrs==17.4.0
 autobahn==19.6.2
 Automat==0.6.0
-Babel==2.6.0
+Babel==2.9.1
 base58==0.2.5
 bcrypt==3.1.7
 bidict==0.18.0
