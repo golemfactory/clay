@@ -3,7 +3,7 @@ scikit-learn==0.19.1
 OpenEXR
 scipy
 six==1.5
-Pillow==6.2.2
+Pillow==9.0.0
 sklearn
 numpy==1.15.4
 PyWavelets
