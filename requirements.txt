@@ -165,7 +165,7 @@ txtorcon==0.20.0
 typing-extensions==3.7.4.1
 typing-inspect==0.5.0
 u-msgpack-python==2.5.0
-ujson==1.35
+ujson==5.2.0
 urllib3==1.24.3
 watchdog==0.8.3
 web3==4.2.1

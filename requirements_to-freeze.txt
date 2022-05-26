@@ -62,7 +62,7 @@ token_bucket==0.2.0
 transitions==0.7.2
 Twisted==19.7.0
 txaio==18.8.1
-ujson==1.35
+ujson==5.2.0
 urllib3==1.24.3
 web3==4.2.1
 zope.interface==4.4.2
