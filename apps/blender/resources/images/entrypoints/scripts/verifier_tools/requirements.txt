@@ -5,6 +5,6 @@ scipy
 six==1.5
 Pillow==6.2.2
 sklearn
-numpy==1.15.4
+numpy==1.22.0
 PyWavelets
 opencv-python
