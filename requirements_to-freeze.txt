@@ -30,7 +30,7 @@ miniupnpc<2.1,>=2.0
 multidict<4.7.0
 ndg-httpsclient
 netifaces==0.10.4
-numpy==1.15.4
+numpy==1.22.0
 OpenEXR
 os-win
 packaging
