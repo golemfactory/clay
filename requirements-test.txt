@@ -1,6 +1,6 @@
 aenum==2.1.2
 astroid==1.6.5
-codecov==2.0.15
+codecov==2.0.16
 coverage==4.5.1
 dill==0.3.0
 factory-boy==2.9.2
