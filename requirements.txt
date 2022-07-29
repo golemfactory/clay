@@ -72,7 +72,7 @@ MarkupSafe==1.1.1
 marshmallow-enum==1.5.1
 marshmallow==3.0.0rc6
 miniupnpc==2.0.2
-mistune==0.8.3
+mistune==2.0.3
 mock==2.0.0
 monotonic==1.5
 msgpack==0.6.2
