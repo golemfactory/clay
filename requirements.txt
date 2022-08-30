@@ -36,7 +36,7 @@ docker-pycreds==0.4.0
 docker==3.5.0
 enforce==0.3.4
 eth-abi==1.1.1
-eth-account==0.2.3
+eth-account==0.5.9
 eth-hash==0.1.4
 eth-keyfile==0.5.1
 eth-keys==0.2.0b3
