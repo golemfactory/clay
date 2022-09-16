@@ -93,7 +93,7 @@ oslo.context==2.21.0
 oslo.i18n==3.22.1
 oslo.log==3.40.1
 oslo.serialization==2.28.1
-oslo.utils==3.37.0
+oslo.utils==4.10.1
 packaging==17.1
 parsimonious==0.8.0
 passlib==1.7.2
