@@ -146,7 +146,7 @@ semantic-version==2.6.0
 service-identity==18.1.0
 setproctitle==1.1.10
 setuptools-rust==0.10.2
-setuptools==38.7.0
+setuptools==65.5.1
 shellescape==3.4.1
 shutilwhich==1.1.0
 six==1.12.0

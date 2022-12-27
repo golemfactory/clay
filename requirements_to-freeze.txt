@@ -55,7 +55,7 @@ scrypt
 semantic_version
 service-identity==18.1.0
 setuptools-rust==0.10.2
-setuptools>=36.0.1,<39.0.0
+setuptools>=36.0.1,<66.0.0
 six==1.12.0
 tabulate
 token_bucket==0.2.0
